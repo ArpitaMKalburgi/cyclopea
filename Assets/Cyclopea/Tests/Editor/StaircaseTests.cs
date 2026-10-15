@@ -12,22 +12,22 @@ namespace Cyclopea.Tests
         [TestCase(800.0)]
         public void ConvergesOnObserverThreshold(double trueThreshold)
         {
-            // 3-down/1-up tracks the 79.4% point; the observer's cumulative normal puts
-            // that point slightly above its 50% "threshold" — allow 0.2 log units (×1.6).
-            const double toleranceLog = 0.2;
+            // 3-down/1-up converges on the observer's 79.4 % point; compare against that.
+            const double toleranceLog = 0.1; // ×1.26
             const int runs = 20;
             double sumLogErr = 0;
 
             for (int run = 0; run < runs; run++)
             {
                 var observer = new SimulatedObserver(trueThreshold, seed: run + 1);
+                double target = observer.ArcsecAtProbability(0.794);
                 var stair = new Staircase(new Staircase.Config { FloorArcsec = 15 });
                 while (!stair.IsFinished)
                     stair.Respond(observer.Respond(stair.CurrentArcsec));
 
                 double est = stair.ThresholdArcsec();
                 Assert.False(double.IsNaN(est), "Staircase ended without a threshold estimate");
-                sumLogErr += DisparityMath.Log10(est) - DisparityMath.Log10(trueThreshold);
+                sumLogErr += DisparityMath.Log10(est) - DisparityMath.Log10(target);
             }
 
             double meanLogErr = sumLogErr / runs;

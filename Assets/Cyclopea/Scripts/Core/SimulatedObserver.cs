@@ -35,6 +35,21 @@ namespace Cyclopea.Core
 
         public bool Respond(double arcsec) => rng.NextDouble() < ProbabilityCorrect(arcsec);
 
+        /// <summary>
+        /// Disparity at which this observer is correct with probability `p` — e.g. 0.794 for
+        /// a 3-down/1-up staircase. This, not the 50 % point, is what the staircase estimates.
+        /// </summary>
+        public double ArcsecAtProbability(double p)
+        {
+            double lo = DisparityMath.Log10(1), hi = DisparityMath.Log10(100000);
+            for (int i = 0; i < 60; i++)
+            {
+                double mid = 0.5 * (lo + hi);
+                if (ProbabilityCorrect(DisparityMath.Pow10(mid)) < p) lo = mid; else hi = mid;
+            }
+            return DisparityMath.Pow10(0.5 * (lo + hi));
+        }
+
         // Abramowitz & Stegun 7.1.26 — plenty for a test observer.
         static double Erf(double x)
         {
