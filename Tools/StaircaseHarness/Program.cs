@@ -25,4 +25,5 @@ class P {
     var sup=new SimulatedObserver(5, seed:7); var s2=new Staircase(new Staircase.Config{FloorArcsec=15});
     while(!s2.IsFinished) s2.Respond(sup.Respond(s2.CurrentArcsec));
     Console.WriteLine($"\nsuper-threshold observer -> est {s2.ThresholdArcsec():F1}\" atFloor={s2.AtFloor()} trials={s2.Trials}"); ok&=s2.AtFloor() && s2.Trials<40;
+    ok &= LadderCheck.Run();
     Console.WriteLine(ok?"ALL PASS":"FAILURES"); return ok?0:1; } }

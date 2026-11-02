@@ -54,6 +54,8 @@ namespace Cyclopea.Core
         public bool IsFinished => floorExit || Reversals >= cfg.ReversalsToStop || Trials >= cfg.MaxTrials;
         bool AtFloorLevel => logLevel <= DisparityMath.Log10(cfg.FloorArcsec) + 1e-9;
         public double CurrentArcsec => DisparityMath.Pow10(logLevel);
+        public double CeilingArcsec => cfg.CeilingArcsec;
+        public double FloorArcsec => cfg.FloorArcsec;
         public IReadOnlyList<double> ReversalLogs => reversalLogs;
 
         public Staircase(Config config = null)
