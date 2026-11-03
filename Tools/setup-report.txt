@@ -1,0 +1,18 @@
+URP: Assets/Cyclopea/Settings/Cyclopea_URP.asset (MSAA 4x, HDR off, shadows off)
+Player: com.ujwal240.cyclopea, IL2CPP, ARM64, API 32+, Vulkan, Linear, ASTC
+OVRProjectConfig: hands+controllers, passthrough, scene, anchors
+Meta Project Setup Tool: FixTasks(Android) x3
+OpenXR loader on Android: True
+OpenXR render mode: SinglePassInstanced
+OpenXR features on: MetaQuestFeature, OculusTouchControllerProfile, MetaHandTrackingAim, HandTracking, MetaXRFeature
+Scene: Assets/Cyclopea/Scenes/Cyclopea.unity (rig, passthrough underlay, hands, MRUK, 4 patches, session)
+
+Checks:
+  build target: Android
+  render pipeline: Cyclopea_URP
+  graphics APIs: Vulkan
+  min SDK: AndroidApiLevel32
+  backend: IL2CPP
+  colour space: Linear
+  XR loaders: OpenXRLoader
+

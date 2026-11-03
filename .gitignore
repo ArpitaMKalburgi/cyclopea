@@ -109,3 +109,10 @@ InitTestScene*.unity*
 /[Aa]ssets/[Ss]ceneDependencyCache*
 Tools/StaircaseHarness/bin/
 Tools/StaircaseHarness/obj/
+
+# Cyclopea
+/Builds/
+/Tools/captures/
+*.apk
+/.vscode/
+__pycache__/

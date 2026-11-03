@@ -1,0 +1,19 @@
+{
+    "name": "Cyclopea.Runtime",
+    "rootNamespace": "Cyclopea",
+    "references": [
+        "Cyclopea.Core",
+        "Oculus.VR",
+        "meta.xr.mrutilitykit",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

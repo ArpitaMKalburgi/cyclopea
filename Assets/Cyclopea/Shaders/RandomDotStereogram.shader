@@ -16,6 +16,7 @@ Shader "Cyclopea/RandomDotStereogram"
         _DotColor   ("Dot colour", Color) = (1, 1, 1, 1)
         _CellSize   ("Cell size (UV units)", Float) = 0.02
         _DotRadius  ("Dot radius (UV units)", Float) = 0.006
+        _DotsPerCell ("Mean dots per cell (Poisson)", Float) = 1.0
         _Seed       ("Seed", Float) = 0
         // Lateral shift of the masked region, in UV units (full disparity, split across eyes).
         _EyeOffset  ("Eye offset (UV)", Float) = 0
@@ -30,6 +31,10 @@ Shader "Cyclopea/RandomDotStereogram"
         // Per-eye dot contrast; used by the balance check to rebalance a suppressed eye.
         _ContrastL  ("Contrast left eye", Range(0, 1)) = 1
         _ContrastR  ("Contrast right eye", Range(0, 1)) = 1
+        // Debug: -1 = real stereo eye index; 0/1 = render as if left/right eye (offline per-eye captures).
+        _ForceEye   ("Force eye (-1 off)", Float) = -1
+        // Debug: 1 = tint left eye red, right eye blue (device check that each eye gets its own image).
+        _DebugEyeTint ("Debug eye tint", Float) = 0
     }
 
     SubShader
@@ -53,6 +58,7 @@ Shader "Cyclopea/RandomDotStereogram"
                 float4 _DotColor;
                 float  _CellSize;
                 float  _DotRadius;
+                float  _DotsPerCell;
                 float  _Seed;
                 float  _EyeOffset;
                 float  _OffsetSign;
@@ -63,6 +69,8 @@ Shader "Cyclopea/RandomDotStereogram"
                 float  _Decoy;
                 float  _ContrastL;
                 float  _ContrastR;
+                float  _ForceEye;
+                float  _DebugEyeTint;
             CBUFFER_END
 
             struct Attributes
@@ -107,32 +115,49 @@ Shader "Cyclopea/RandomDotStereogram"
                 return length(d) - r;
             }
 
-            // Dot centre for a cell of the field with the given seed.
-            float2 dotCenter(float2 cell, float seed)
+            // The dot field is a Poisson process: every cell holds a Poisson-distributed number of
+            // dots (mean _DotsPerCell) at independent uniform positions. Poisson is the one field whose
+            // pieces in disjoint regions are independent, so the shifted interior joined to the
+            // unshifted surround is statistically identical to plain static for either eye alone:
+            // no clumps or gaps along the creature's outline at any disparity.
+            float poissonCount(float u)
             {
-                float2 j = float2(hash21(cell + seed), hash21(cell + seed + 17.0));
-                // Keep the whole disc inside its cell so discs never straddle cells.
-                return (cell + 0.2 + 0.6 * j) * _CellSize;
+                // Inverse CDF for small means, capped at 4 dots per cell.
+                float lambda = _DotsPerCell;
+                float p = exp(-lambda);
+                float c = p;
+                float k = 0;
+                [unroll] for (int i = 1; i <= 4; i++)
+                {
+                    if (u > c) { k = i; p *= lambda / i; c += p; }
+                }
+                return k;
             }
 
-            // Coverage of fragment `uv` by discs of the field whose centres satisfy
-            // `inside == (maskSDF(centreInSurfaceSpace) < 0)`. `shift` moves the field.
+            // Coverage of fragment `uv` by dots whose displayed centre satisfies
+            // `wantInside == (maskSDF(displayed) < 0)`. The field is sampled at uv + shift, so a dot
+            // at field position c is displayed at c - shift.
             float coverage(float2 uv, float shift, bool wantInside)
             {
                 float2 sampleUV = uv + float2(shift, 0);
                 float2 baseCell = floor(sampleUV / _CellSize);
                 float cov = 0;
-                float aa = fwidth(uv.x) * 1.0;
+                float aa = fwidth(uv.x);
                 [unroll] for (int y = -1; y <= 1; y++)
                 [unroll] for (int x = -1; x <= 1; x++)
                 {
                     float2 cell = baseCell + float2(x, y);
-                    float2 c = dotCenter(cell, _Seed);
-                    // Where this dot sits on the surface (undo the shift) decides membership.
-                    bool inside = maskSDF(c - float2(shift, 0)) < 0;
-                    if (inside != wantInside) continue;
-                    float d = length(sampleUV - c);
-                    cov = max(cov, 1.0 - smoothstep(_DotRadius - aa, _DotRadius + aa, d));
+                    float k = poissonCount(hash21(cell + _Seed + 3.17));
+                    [unroll] for (int j = 0; j < 4; j++)
+                    {
+                        if (j >= k) break;
+                        float2 jit = float2(hash21(cell + _Seed + 11.3 * j + 0.5), hash21(cell + _Seed + 7.9 * j + 17.0));
+                        float2 c = (cell + jit) * _CellSize;
+                        bool inside = maskSDF(c - float2(shift, 0)) < 0;
+                        if (inside != wantInside) continue;
+                        float d = length(sampleUV - c);
+                        cov = max(cov, 1.0 - smoothstep(_DotRadius - aa, _DotRadius + aa, d));
+                    }
                 }
                 return cov;
             }
@@ -143,14 +168,15 @@ Shader "Cyclopea/RandomDotStereogram"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
 
                 // Eye 0 = left, 1 = right. Left samples at -s/2, right at +s/2 => crossed disparity.
-                float eyeSign = (unity_StereoEyeIndex == 0) ? -1.0 : 1.0;
+                float eye = (_ForceEye >= 0) ? _ForceEye : (float)unity_StereoEyeIndex;
+                float eyeSign = (eye < 0.5) ? -1.0 : 1.0;
                 float shift = (_Decoy > 0.5) ? 0.0 : eyeSign * _OffsetSign * 0.5 * _EyeOffset;
 
                 float outsideCov = coverage(IN.uv, 0.0, false);
                 float insideCov  = coverage(IN.uv, shift, true);
                 float cov = max(outsideCov, insideCov);
 
-                float contrast = (unity_StereoEyeIndex == 0) ? _ContrastL : _ContrastR;
+                float contrast = (eye < 0.5) ? _ContrastL : _ContrastR;
                 float3 dotCol = lerp(_Background.rgb, _DotColor.rgb, contrast);
                 float3 col = lerp(_Background.rgb, dotCol, cov);
 
@@ -161,6 +187,8 @@ Shader "Cyclopea/RandomDotStereogram"
                     float edge = 1.0 - smoothstep(0.0, _CellSize * 0.35, sd);
                     col = lerp(col, _DotColor.rgb, edge * 0.25);
                 }
+                if (_DebugEyeTint > 0.5)
+                    col *= (eye < 0.5) ? float3(1.0, 0.45, 0.45) : float3(0.45, 0.6, 1.0);
                 return half4(col, 1);
             }
             ENDHLSL
