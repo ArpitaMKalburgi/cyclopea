@@ -568,6 +568,17 @@ namespace Cyclopea.EditorTools
             mxa.EnableAcoustics = true;
             session.CreatureVoice = creatureVoice;
 
+            // Found creatures: out of the static, onto your fingertip (ISDK hand joints), into the nest.
+            var creatureMat = MakeMaterial(MaterialsDir + "/Creature.mat", Shader.Find("Cyclopea/Creature"), null);
+            var tips = game.AddComponent<FingerTips>();
+            var creatures = game.AddComponent<CreatureDirector>();
+            creatures.Material = creatureMat;
+            creatures.Head = center;
+            creatures.Tips = tips;
+            creatures.Patches = patches;
+            creatures.Voice = creatureVoice;
+            session.Creatures = creatures;
+
             // Reverb shaped like the player's own scanned room.
             var roomGo = new GameObject("RoomAcoustics (Meta XR Audio + MRUK)");
             var roomProps = roomGo.AddComponent<MetaXRAudioRoomAcousticProperties>();
@@ -594,7 +605,7 @@ namespace Cyclopea.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             report.AppendLine("Scene: " + ScenePath + " (rig, passthrough underlay, hands, ISDK rig + gaze, microgestures, MRUK, " +
-                              "depth raycast, passthrough camera, 4 patches, session, anchor, platform, tuning)");
+                              "depth raycast, passthrough camera, 4 patches, session, creatures + fingertips, anchor, platform, tuning)");
         }
 
         static OVRHand MakeHand(GameObject prefab, Transform anchor, bool isLeft)
@@ -829,6 +840,101 @@ namespace Cyclopea.EditorTools
             UnityEngine.Object.DestroyImmediate(quad);
             UnityEngine.Object.DestroyImmediate(camGo);
             Debug.Log("[Cyclopea] Motion captures written to " + outDir);
+        }
+
+        /// <summary>
+        /// Offline look at the found creatures as a seated player sees them: four squares of static flat
+        /// on a desk, one creature condensing out of its square, and a nest of all four species at four
+        /// rarities. Plus a close-up. Mono render, so (correctly) no hidden shape shows in the static.
+        /// </summary>
+        [MenuItem("Cyclopea/4c. Capture creatures (offline)")]
+        public static void CaptureCreatures()
+        {
+            string outDir = "Tools/captures-creatures";
+            Directory.CreateDirectory(outDir);
+            var shader = Shader.Find("Cyclopea/RandomDotStereogram");
+            var creatureMat = AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/Creature.mat")
+                              ?? new Material(Shader.Find("Cyclopea/Creature"));
+            var made = new List<UnityEngine.Object>();
+            var rng = new System.Random(7);
+            const float size = 0.12f, step = (0.12f + 0.035f) * 0.5f;
+            Vector3 center = new Vector3(0f, 0f, 0.6f);
+            var flat = Quaternion.LookRotation(Vector3.down, Vector3.forward);   // static facing up, +v away from the player
+            var patches = new List<Transform>();
+            Vector2[] grid = { new Vector2(-1, 1), new Vector2(1, 1), new Vector2(-1, -1), new Vector2(1, -1) };
+            foreach (var g in grid)
+            {
+                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                made.Add(q);
+                var m = new Material(shader);
+                made.Add(m);
+                m.SetColor("_Background", new Color(0.10f, 0.10f, 0.12f, 1f));
+                m.SetColor("_DotColor", new Color(0.92f, 0.92f, 0.92f, 1f));
+                m.SetFloat("_Seed", (float)(rng.NextDouble() * 1000));
+                m.SetFloat("_CellSize", StereoPatch.CellSizeM / size);
+                m.SetFloat("_DotRadius", StereoPatch.DotRadiusM / size);
+                m.SetFloat("_EyeOffset", 0f);
+                q.GetComponent<MeshRenderer>().sharedMaterial = m;
+                q.transform.SetPositionAndRotation(center + new Vector3(g.x * step, 0f, g.y * step), flat);
+                q.transform.localScale = new Vector3(size, size, 1f);
+                patches.Add(q.transform);
+            }
+
+            var camGo = new GameObject("CaptureCam");
+            made.Add(camGo);
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.42f, 0.36f, 0.30f);   // stand-in for a wooden desk in passthrough
+            cam.fieldOfView = 34f; cam.nearClipPlane = 0.02f; cam.farClipPlane = 5f; cam.allowMSAA = true;
+            var rt = new RenderTexture(1280, 960, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
+            rt.Create();
+            cam.targetTexture = rt; cam.aspect = 1280f / 960f;
+
+            CreatureBody Make(Creatures.Species sp, Creatures.Rarity r, float wobble, float seed)
+            {
+                var c = CreatureBody.Create(creatureMat, null, 0.27f * size, wobble, Creatures.Lobes(sp), seed, r);
+                c.Look = cam.transform;
+                made.Add(c.gameObject);
+                return c;
+            }
+
+            // One coming out of the top-right square, half condensed, floating where the blob was.
+            var rising = Make(Creatures.Species.Starfin, Creatures.Rarity.Rare, 0.15f, 40f);
+            rising.transform.SetPositionAndRotation(patches[1].position + Vector3.up * 0.045f,
+                Quaternion.LookRotation(patches[1].up, -patches[1].forward));
+            rising.Dissolve = 0.45f;
+
+            // The nest beside the right-hand column, one of each species, rising rarity.
+            var kinds = new[]
+            {
+                (Creatures.Species.Trifoil, Creatures.Rarity.Common), (Creatures.Species.Clover, Creatures.Rarity.Uncommon),
+                (Creatures.Species.Sixling, Creatures.Rarity.Rare), (Creatures.Species.Starfin, Creatures.Rarity.Elusive)
+            };
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                var c = Make(kinds[i].Item1, kinds[i].Item2, 0.12f + 0.03f * i, 100f + 37f * i);
+                Vector3 pos = center + new Vector3(step + size * 0.5f + 0.06f, 0.002f, (1.5f - i) * 0.045f);
+                Vector3 toCam = Vector3.ProjectOnPlane(new Vector3(0f, 0.42f, 0.18f) - pos, Vector3.up);
+                c.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(toCam, Vector3.up));
+                c.transform.localScale = Vector3.one * 0.55f;
+            }
+
+            void Shoot(Vector3 eye, Vector3 at, string name)
+            {
+                cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(at - eye, Vector3.up));
+                foreach (var c in UnityEngine.Object.FindObjectsByType<CreatureBody>(FindObjectsSortMode.None)) c.Refresh();
+                Render(cam, rt);
+                Save(rt, outDir + "/" + name + ".png");
+            }
+
+            Shoot(new Vector3(0f, 0.42f, 0.18f), center + new Vector3(0.04f, 0f, 0f), "seated-view");
+            Shoot(patches[1].position + new Vector3(-0.08f, 0.16f, -0.14f), patches[1].position + Vector3.up * 0.05f, "close-up");
+            rising.Dissolve = 0f;
+            Shoot(patches[1].position + new Vector3(-0.08f, 0.16f, -0.14f), patches[1].position + Vector3.up * 0.05f, "close-up-solid");
+
+            cam.targetTexture = null; rt.Release();
+            foreach (var o in made) if (o != null) UnityEngine.Object.DestroyImmediate(o);
+            Debug.Log("[Cyclopea] Creature captures written to " + outDir);
         }
 
         static void Render(Camera cam, RenderTexture rt)

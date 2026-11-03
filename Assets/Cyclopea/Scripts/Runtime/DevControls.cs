@@ -90,6 +90,7 @@ namespace Cyclopea
                     case "sign": StereoPatch.OffsetSign = v.StartsWith("-") ? -1f : 1f; Say("Remote: sign " + StereoPatch.OffsetSign); break;
                     case "mode": if (Enum.TryParse(v, true, out InputMode m)) SetMode(m, true); break;
                     case "restart": if (Session != null) Session.Restart(); break;
+                    case "tutorial": if (Session != null) Session.StartTutorial(); break;
                     case "cue":
                         if (Session != null && Enum.TryParse(v, true, out SessionLog.Cue cue)) { Session.StartCue(cue); Say("Remote: cue " + cue); }
                         break;

@@ -23,6 +23,8 @@ namespace Cyclopea.PlayTests
             // XR is not running in the editor; the rig's OVR components log about it, which is expected.
             LogAssert.ignoreFailingMessages = true;
             PlayerPrefs.SetInt(SpotSession.NoticeKey, 1);   // these tests start past the first-launch notice
+            PlayerPrefs.SetInt(SpotSession.TutorialKey, 1); // ...and past the tutorial creature
+            PlayerPrefs.DeleteKey(CreatureDirector.CollectionKey);
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
                 Scene, new LoadSceneParameters(LoadSceneMode.Single));
@@ -67,6 +69,11 @@ namespace Cyclopea.PlayTests
             Assert.That(s.CreatureVoice != null && s.CreatureVoice.spatialBlend == 1f &&
                         s.CreatureVoice.GetComponent<MetaXRAudioSource>() != null, "creature voice is spatialised by Meta XR Audio");
             Assert.NotNull(Object.FindFirstObjectByType<RoomAcoustics>(), "room acoustics");
+            var d = Object.FindFirstObjectByType<CreatureDirector>();
+            Assert.That(d != null && s.Creatures == d, "creature director wired to the session");
+            Assert.That(d.Material != null && d.Material.shader.name == "Cyclopea/Creature",
+                "creature material and shader");
+            Assert.That(d.Tips != null && d.Head == s.Head && d.Patches.Length == 4 && d.Voice == s.CreatureVoice, "creature director wiring");
             Assert.NotNull(Object.FindFirstObjectByType<DevControls>());
             Assert.That(s.Patches.Count(p => p.Arcsec > 0), Is.EqualTo(1), "exactly one square hides a creature");
             Assert.That(s.Patches.All(p => p.GetComponent<IsdkPatchEvents>() is IsdkPatchEvents e && e.Ray != null && e.Gaze != null),
@@ -120,6 +127,127 @@ namespace Cyclopea.PlayTests
             Assert.That(s.Cue, Is.EqualTo(SessionLog.Cue.Motion));
             StringAssert.Contains("Sway your head", s.Title.text);
             s.StartCue(SessionLog.Cue.Stereo);
+        }
+
+        static CreatureDirector Director()
+        {
+            var d = Object.FindFirstObjectByType<CreatureDirector>();
+            Assert.NotNull(d, "CreatureDirector missing from scene");
+            d.Tips.SimulatedTip = null;
+            return d;
+        }
+
+        /// <summary>The shader's mask SDF in patch UV, written out again here as the independent reference.</summary>
+        static float MaskSdf(StereoPatch p, Vector2 uv)
+        {
+            Vector2 d = uv - p.MaskCenter;
+            float ang = Mathf.Atan2(d.y, d.x);
+            float r = p.MaskRadius * (1f + p.MaskWobble * Mathf.Sin(p.MaskLobes * ang + p.Seed));
+            return d.magnitude - r;
+        }
+
+        [UnityTest]
+        public IEnumerator CorrectPickRevealsTheCreatureYouSaw()
+        {
+            var s = Session();
+            var d = Director();
+            s.Restart();
+            var p = s.Patches[s.CurrentTarget];
+            double level = s.CurrentArcsec;
+            int before = d.Collection.Total;
+            s.Choose(s.CurrentTarget, "test");
+
+            var c = d.Latest;
+            Assert.NotNull(c, "a found creature comes out of the static");
+            Assert.That(c.Species, Is.EqualTo(Creatures.FromLobes(p.MaskLobes)), "species = the outline's lobes");
+            Assert.That(c.Rarity, Is.EqualTo(Creatures.FromArcsec(level)), "rarity = how fine the depth was");
+            Assert.That(c.GetComponentsInChildren<Collider>(true), Is.Empty, "creatures never block a pick");
+
+            // Its footprint, carried into the square's own UV space, lies on the hidden outline.
+            var mesh = c.GetComponentInChildren<MeshFilter>().sharedMesh;
+            var body = c.GetComponentInChildren<MeshFilter>().transform;
+            float worst = 0f;
+            for (int i = 0; i < 48; i++)
+            {
+                Vector3 local = p.transform.InverseTransformPoint(body.TransformPoint(mesh.vertices[i]));
+                worst = Mathf.Max(worst, Mathf.Abs(MaskSdf(p, new Vector2(local.x + 0.5f, local.y + 0.5f))));
+            }
+            Assert.That(worst, Is.LessThan(2e-3f), "the creature's outline is the shape hidden in the static (UV)");
+
+            Assert.That(d.Collection.Total, Is.EqualTo(before + 1), "collected");
+            Assert.That(PlayerPrefs.GetString(CreatureDirector.CollectionKey), Is.EqualTo(d.Collection.Serialize()), "saved");
+            Assert.That(d.FoundThisSession, Is.EqualTo(1));
+
+            float t0 = Time.time;
+            while (d.NestCount == 0 && Time.time - t0 < 4f) yield return null;
+            Assert.That(d.NestCount, Is.EqualTo(1), "with no hand near, it settles in the nest");
+            Assert.That(c.Dissolve, Is.EqualTo(0f), "fully visible in the nest");
+        }
+
+        [UnityTest]
+        public IEnumerator CreatureClimbsOntoAFingertipAndRides()
+        {
+            var s = Session();
+            var d = Director();
+            var tip = new GameObject("SimulatedTip").transform;
+            try
+            {
+                s.Restart();
+                var p = s.Patches[s.CurrentTarget];
+                tip.position = p.transform.position - p.transform.forward * 0.25f;
+                d.Tips.SimulatedTip = tip;
+                s.Choose(s.CurrentTarget, "test");
+                var c = d.Latest;
+
+                float t0 = Time.time;
+                while (!d.Riding && Time.time - t0 < 3f) yield return null;
+                Assert.True(d.Riding, "it hops onto the fingertip");
+
+                tip.position += new Vector3(0.08f, 0.03f, 0f);   // a real hand moves far less per frame
+                yield return new WaitForSeconds(0.35f);
+                Assert.That(Vector3.Distance(c.transform.position, tip.position), Is.LessThan(0.02f), "it rides along with the finger");
+
+                tip.gameObject.SetActive(false);   // hand lost: it hops down to the nest
+                t0 = Time.time;
+                while (d.NestCount == 0 && Time.time - t0 < 3f) yield return null;
+                Assert.That(d.NestCount, Is.EqualTo(1), "hand gone: it goes to the nest");
+            }
+            finally
+            {
+                d.Tips.SimulatedTip = null;
+                Object.Destroy(tip.gameObject);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator WrongPickPeeksAndCollectsNothing()
+        {
+            var s = Session();
+            var d = Director();
+            s.Restart();
+            int before = d.Collection.Total;
+            s.Choose((s.CurrentTarget + 1) % 4, "test");
+            var peek = d.Latest;
+            Assert.NotNull(peek, "the real one peeks out");
+            Assert.That(d.Collection.Total, Is.EqualTo(before), "nothing collected");
+            yield return new WaitForSeconds(1.5f);
+            Assert.True(peek == null, "and ducks back into the static");
+            Assert.That(d.NestCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator ScoreCardCountsTheCreatures()
+        {
+            var s = Session();
+            var d = Director();
+            s.Restart();
+            yield return Play(s, x => x.CurrentTarget);
+            Assert.True(s.IsDone);
+            Assert.That(d.FoundThisSession, Is.EqualTo(s.TrialsDone), "every correct pick is a creature");
+            StringAssert.Contains("You found " + d.FoundThisSession + " creatures", s.Title.text);
+            StringAssert.Contains("Field guide", s.Title.text);
+            yield return new WaitForSeconds(2.5f);
+            Assert.That(d.NestCount, Is.LessThanOrEqualTo(d.NestSize), "the nest stays small");
         }
 
         [UnityTest]

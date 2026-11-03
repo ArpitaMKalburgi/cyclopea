@@ -42,6 +42,8 @@ namespace Cyclopea.PlayTests
         {
             LogAssert.ignoreFailingMessages = true;
             PlayerPrefs.SetInt(SpotSession.NoticeKey, 1);   // these tests start past the first-launch notice
+            PlayerPrefs.SetInt(SpotSession.TutorialKey, 1); // ...and past the tutorial creature
+            PlayerPrefs.DeleteKey(CreatureDirector.CollectionKey);
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
                 Scene, new LoadSceneParameters(LoadSceneMode.Single));

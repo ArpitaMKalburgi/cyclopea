@@ -6,7 +6,7 @@ Goal by tonight:
 
 Everything else is built and checked offline:
 - `Tools/captures-report.md`: per-eye shift and the one-eye control.
-- `Tools/room-sweep.md`: placement across 58 rooms.
+- `Tools/room-sweep.md`: placement across all 87 MRUK sample rooms.
 - Tests: `Tools/editmode-results.xml`, `Tools/playmode-results.xml`.
 
 ## 0. Headset and PC setup (25 min, once)
@@ -38,7 +38,7 @@ Checks 1 to 5 matter most.
 
 | # | Check | How | Pass | If it fails |
 |---|---|---|---|---|
-| 0 | First-launch notice | Launch the app | A short notice above the squares ("a game about depth perception… not a medical device…"). Pinch any square to start. It never shows again | — |
+| 0 | First launch: notice, then the tutorial creature | Launch the app. Pinch any square. Then hold out a finger near the creature | A short notice ("a game about depth perception… not a medical device…"). After the pinch, a small one-eyed creature appears, sitting in the middle of the four squares. It climbs onto your finger, rides it, hops into one square and sinks into the static. That square's blob floats and its frame pulses. Pinch it: the creature comes back out onto your finger, "You found it!", and round 1 starts. Neither the notice nor the tutorial shows again | Creature never climbs on: note it (fingertip tracking). It hides anyway after 7 s, or at once if you pinch. Replay it with `Tools/quest.sh remote tutorial=1` |
 | 1 | Passthrough + static | Look at your desk | Your room, with four squares of white-on-black static on the desk | Black background: tell Claude (passthrough config) |
 | 2 | **Each eye gets its own image** | Pinch left thumb + **middle** finger. Close one eye, then the other | Left eye sees the squares tinted **red**, right eye **blue** | Same colour in both eyes means per-eye rendering is broken. Do check 11 now (motion mode still works then), and tell Claude: the shader fallbacks are ready |
 | 3 | Pop direction | Tint off (middle pinch again). Look at the four squares with both eyes | One square has a blob that floats **toward** you | If it sinks *behind* the surface, pinch left **pinky** to flip it. Note which way was right |
@@ -51,6 +51,7 @@ Checks 1 to 5 matter most.
 | 10 | Score stays on the desk | After a score, quit the app (`Tools/quest.sh run` again, or the menu) | "Last time … Beat it." card appears where you played | No card: note it (anchors) |
 | 11 | **Motion mode** (the backup game, and the path for players without stereo vision) | Pinch right thumb + **ring**: "Motion mode". Close one eye and sway your head gently left and right | With **one eye**, one square's static slides against the rest while you sway. Hold still and it vanishes. Play it to a Motion Depth Score | Nothing slides: tell Claude. Too subtle: sway more, or turn on Auto-sway in the debugger panel |
 | 12 | Pause and resume | Mid-trial, press the Meta button (system menu), then come back. Or take the headset off for a few seconds | "Paused", then "Welcome back", and the same trial continues | Trial skipped or timer jumped: note it |
+| 13 | **Found creatures** | Play round 1 with your hand fairly near the squares | Each right pick: the creature condenses out of the dots in the shape you saw, looks at you, climbs onto your index fingertip, rides about 2 s, then sits beside the squares (5 at most). Wrong pick: the real one peeks out and ducks back. First of a kind: "New in your field guide…". The score card says how many you found | Creature in the wrong place (not where the blob floated): tell Claude. Jitter on the finger: note it |
 
 Afterwards, pinch left ring again until *Eyes: Both*. Then run `Tools/quest.sh stats` to pull the logs and print the numbers.
 
@@ -85,14 +86,14 @@ Tools/quest.sh fov on       # narrow-FoV check: do the squares and the title sti
 | Right thumb + middle | Input: Interaction SDK → raw ray (backup) → eyes-only dwell (look and hold 1.4 s) |
 | Right thumb + ring | Cue: stereo (two eyes only) ↔ motion (sway your head; one eye is enough) |
 | Pinch any square on the score card | Play again |
-| `Tools/quest.sh remote tint=1 eyes=LeftOnly mode=Dwell cue=Motion sway=1 choose=2` | Same switches from the PC (dev builds) |
+| `Tools/quest.sh remote tint=1 eyes=LeftOnly mode=Dwell cue=Motion sway=1 choose=2` | Same switches from the PC (dev builds). `tutorial=1` replays the tutorial creature |
 | Immersive Debugger panel (dev builds) | Sliders for dot size, contrast, room dimming. Live level, surface source, anchor and camera status |
 | Editor: T / E / O / H / M / N / R, keys 1-4 | Same switches, plus next tester id, restart, pick a square |
 
 Finger switches and the remote exist only in development builds. The judge build (`Builds/Cyclopea-judge.apk`) has none of them.
 
 ## 6. Send Claude
-1. Pass or fail for checks 0-12 (one word each).
+1. Pass or fail for checks 0-13 (one word each).
 2. Which pop direction was right.
 3. The output of `Tools/quest.sh stats`, and `Tools/device-eyes/report.md` if you ran section 3.
 4. Your Depth Score line.

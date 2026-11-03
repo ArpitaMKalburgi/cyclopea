@@ -34,12 +34,14 @@ Assets/Cyclopea/
   Shaders/HandOccluder.shader          depth-only hand mask: the real (passthrough) hand is always in front of the static
   Scripts/Core/                        engine-independent logic (no UnityEngine references)
     DisparityMath, Staircase, SkillLadder, SimulatedObserver, SessionLog, SecretCode, PatchLayout,
-    Camouflage (desk palette with guaranteed contrast), Streak (days in a row), VoiceCommands (spoken square choice)
+    Camouflage (desk palette with guaranteed contrast), Streak (days in a row), VoiceCommands (spoken square choice),
+    Creatures (species from lobes, rarity from disparity, field-guide collection)
   Scripts/Runtime/                     one MonoBehaviour per file (Unity only serialises a class whose name matches its file)
     StereoPatch                        one square of static; keeps disparity constant as the head moves
     SurfaceFinder                      MRUK table/wall checked against the room -> Depth API PlaceBox -> easel that finds open space
+    CreatureDirector / CreatureBody    found creatures: body built from the hidden outline, ride the fingertip (FingerTips), nest, tutorial
     SpotSession                        4-choice Spot rung: staircase, feedback, JSONL log, Depth Score card, rounds,
-                                       stereo/motion cue, first-launch notice, pause/resume, 10-minute rest break
+                                       stereo/motion cue, first-launch notice, pause/resume, 10-minute rest break, tutorial creature
     IsdkSelector, IsdkPatchEvents      Interaction SDK hand rays + v207 GazeInteractor (look and pinch)
     HeadGaze, EitherHandPinch          head-pose gaze source and pinch selector for the GazeInteractor
     MicrogestureSelector               thumb-only play (swipe to move, tap to pick)
@@ -80,6 +82,7 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Whole session in the real scene, simulated 60″ observer | completes in 55 trials, Depth Score 83″, log written |
 | Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°); Meta XR Audio room model fits every room |
 | Random-guessing player | gets the honest "no stereo measured" card, no number; the next pinch starts motion mode |
+| Found creatures | the creature that comes out of the static has the exact outline hidden in the square (checked in UV against the shader's mask), never blocks a pick (no colliders), rides a fingertip, settles in a nest of at most 5; rarity follows the disparity it was found at; field guide persists; tutorial runs end to end with and without a hand |
 | Comfort and policy | first launch shows the notice (no medical-claim words, checked) and starts nothing until a pinch; pause freezes the trial and reaction time; 10 minutes of play leads to a rest break |
 | Motion mode (head-motion parallax, one eye is enough) | see `Tools/motion-report.md`; in the real scene only the target square slides, and a simulated player finishes with a Motion Depth Score |
 | Dev APK | builds clean, 100 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |

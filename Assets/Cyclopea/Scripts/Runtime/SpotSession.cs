@@ -25,6 +25,9 @@ namespace Cyclopea
             "ask an eye-care professional before playing.\n" +
             "Play pauses for a short break after 10 minutes.";
 
+        /// <summary>Set once the first-launch tutorial creature has been found.</summary>
+        public const string TutorialKey = "cyc_tutorial_v1";
+
         [Header("Scene")]
         public Transform Head;
         public SurfaceFinder Surface;
@@ -35,6 +38,8 @@ namespace Cyclopea
         public AudioSource Audio;
         [Tooltip("Spatialised source (Meta XR Audio) moved to the creature for feedback, so you hear where it was. Falls back to Audio.")]
         public AudioSource CreatureVoice;
+        [Tooltip("Found creatures come out of the static, ride your fingertip and gather in a nest; runs the tutorial creature.")]
+        public CreatureDirector Creatures;
 
         [Header("Layout")]
         public float PatchSize = 0.12f;
@@ -46,13 +51,15 @@ namespace Cyclopea
         public float CapSeconds = 600f;
         [Tooltip("Length of the rest break. It keeps counting while the headset is off.")]
         public float BreakSeconds = 120f;
+        [Tooltip("Tutorial: how long the found creature is celebrated before round 1 begins.")]
+        public float TutorialRewardSeconds = 2.6f;
 
         static readonly Color FrameIdle = new Color(1f, 1f, 1f, 0.18f);
         static readonly Color FrameHover = new Color(1f, 1f, 1f, 0.75f);
         static readonly Color FrameRight = new Color(0.35f, 1f, 0.55f, 1f);
         static readonly Color FrameWrong = new Color(1f, 0.35f, 0.35f, 1f);
 
-        enum State { Intro, Trial, Feedback, Done, Break }
+        enum State { Intro, Tutorial, Trial, Feedback, Done, Break }
 
         /// <summary>What a finished session produced; other systems (score anchor, camouflage, platform) listen for it.</summary>
         public struct Result
@@ -98,6 +105,7 @@ namespace Cyclopea
         int chosen = -1;
         float playSeconds, breakUntil, pausedAt, titleCharSize;
         int pauseFlags;
+        bool tutorialHidden, tutorialFound;
 
         // Pause reasons; play resumes only when none is left.
         public const int PauseFocus = 1, PauseUnmounted = 2, PauseApp = 4, PauseManual = 8;
@@ -117,6 +125,7 @@ namespace Cyclopea
             OVRManager.InputFocusAcquired += OnFocusAcquired;
             OVRManager.HMDUnmounted += OnUnmounted;
             OVRManager.HMDMounted += OnMounted;
+            if (Creatures != null) Creatures.Collected += OnCollected;
         }
 
         void OnDisable()
@@ -127,6 +136,71 @@ namespace Cyclopea
             OVRManager.InputFocusAcquired -= OnFocusAcquired;
             OVRManager.HMDUnmounted -= OnUnmounted;
             OVRManager.HMDMounted -= OnMounted;
+            if (Creatures != null) Creatures.Collected -= OnCollected;
+        }
+
+        void OnCollected(Core.Creatures.Species s, Core.Creatures.Rarity r, bool isNew)
+        {
+            if (isNew) Toast("New in your field guide: " + Core.Creatures.Name(s, r), 1.8f);
+        }
+
+        // ---------- First-launch tutorial ----------
+        // Show, don't tell: a creature appears beside the squares, climbs onto your finger if you hold
+        // one out, then hops into a square and sinks into the static. You pinch it back out.
+
+        public bool ShowingTutorial => state == State.Tutorial;
+        public bool TutorialCreatureHidden => state == State.Tutorial && tutorialHidden;
+
+        /// <summary>Replays the tutorial (dev remote; also what a first launch does after the notice).</summary>
+        public void StartTutorial()
+        {
+            state = State.Tutorial;
+            tutorialHidden = tutorialFound = false;
+            chosen = -1;
+            ClearPatches();
+            foreach (var p in Patches) p.Reshuffle(rng);
+            target = rng.Next(0, Patches.Length);
+            if (Title != null)
+            {
+                if (titleCharSize > 0) Title.characterSize = titleCharSize;
+                Title.text = "Something lives in this static.\nHold out a finger.";
+            }
+            Toast("", 0f);
+            if (Creatures != null) Creatures.IntroBegin(Patches[target], OnTutorialDived);
+            else OnTutorialDived();
+        }
+
+        void OnTutorialDived()
+        {
+            if (state != State.Tutorial) return;
+            if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = 1920;
+            else Patches[target].MotionArcsec = 1920;
+            tutorialHidden = true;
+            if (Title != null)
+                Title.text = Cue == SessionLog.Cue.Motion
+                    ? "It hid in the static. Sway your head to see it.\nPoint at it and pinch."
+                    : "It hid in the static. See it float?\nPoint at it and pinch.";
+        }
+
+        void OnTutorialPick(StereoPatch p)
+        {
+            if (tutorialFound) return;
+            if (!tutorialHidden) { if (Creatures != null) Creatures.IntroSkip(); return; }
+            if (p.Index == target)
+            {
+                tutorialFound = true;
+                chosen = p.Index;
+                if (Creatures != null) Creatures.Reveal(p, 1920, 1920, true);
+                PlayAtCreature(clipRight, p, 1920);
+                if (Title != null) Title.text = "You found it!\nMore are hiding, and they get harder to see.";
+                stateUntil = Time.time + TutorialRewardSeconds;
+            }
+            else
+            {
+                if (Creatures != null) Creatures.Reveal(Patches[target], 1920, 1920, false);
+                PlayAtCreature(clipWrong, Patches[target], 1920);
+                Toast("Not that one. Look for the square that floats.", 2.5f);
+            }
         }
 
         // ---------- Pause / resume ----------
@@ -215,8 +289,9 @@ namespace Cyclopea
             device = DeviceName(out floorArcsec);
             if (Title != null) titleCharSize = Title.characterSize;
             Place(Surface != null ? Surface.Current : default);
-            if (PlayerPrefs.GetInt(NoticeKey, 0) == 1) Restart();
-            else ShowNotice();
+            if (PlayerPrefs.GetInt(NoticeKey, 0) != 1) ShowNotice();
+            else if (PlayerPrefs.GetInt(TutorialKey, 0) != 1) StartTutorial();
+            else Restart();
         }
 
         // Automation hooks (play-mode tests, XR Operator scripts): read the hidden answer, pick a square.
@@ -251,6 +326,7 @@ namespace Cyclopea
             Directory.CreateDirectory(dir);
             filePath = Path.Combine(dir, sessionId + ".jsonl");
             Round++;
+            if (Creatures != null) Creatures.BeginSession();
             RoundStarting?.Invoke(Round);
             if (Title != null && titleCharSize > 0) Title.characterSize = titleCharSize;
             if (Title != null)
@@ -309,9 +385,11 @@ namespace Cyclopea
             {
                 PlayerPrefs.SetInt(NoticeKey, 1);
                 PlayerPrefs.Save();
-                Restart();
+                if (PlayerPrefs.GetInt(TutorialKey, 0) != 1) StartTutorial();
+                else Restart();
                 return;
             }
+            if (state == State.Tutorial) { if (p != null) OnTutorialPick(p); return; }
             if (state == State.Break)
             {
                 if (Time.time < breakUntil) return;
@@ -350,6 +428,9 @@ namespace Cyclopea
             if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = Math.Max(level, 1920);
             else Patches[target].MotionArcsec = Math.Max(level, 1920);
             PlayAtCreature(correct ? clipRight : clipWrong, Patches[target], Math.Max(level, 1920));
+            // Found: it comes out where it floated (rarity = how fine the depth was) and climbs onto a finger.
+            // Missed: it peeks out of the right square and ducks back.
+            if (Creatures != null) Creatures.Reveal(Patches[target], level, Math.Max(level, 1920), correct);
             state = State.Feedback;
             stateUntil = Time.time + FeedbackSeconds;
         }
@@ -383,6 +464,9 @@ namespace Cyclopea
                     : motion
                         ? "Not measured this time.\nMove your head a little more and try again."
                         : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
+                if (Creatures != null) Creatures.Persist();
+                string found = Creatures != null ? Creatures.SessionLine() : "";
+                if (found.Length > 0) Title.text += "\n" + found;
             }
             Toast(!measured && !motion ? "Pinch any square to play with motion instead" : "Pinch any square to play again", 9999f);
             Finished?.Invoke(new Result
@@ -403,6 +487,12 @@ namespace Cyclopea
                                        : "Pinch any square to play again";
             }
             if (state == State.Feedback && Time.time >= stateUntil) NextTrial();
+            if (state == State.Tutorial && tutorialFound && Time.time >= stateUntil)
+            {
+                PlayerPrefs.SetInt(TutorialKey, 1);
+                PlayerPrefs.Save();
+                Restart();
+            }
 
             StereoPatch hovered = null;
             foreach (var s in Selectors)
@@ -416,6 +506,13 @@ namespace Cyclopea
                 {
                     if (i == target) c = FrameRight;
                     else if (i == chosen) c = FrameWrong;
+                }
+                else if (state == State.Tutorial && i == target && tutorialHidden)
+                {
+                    // Where it hid: green once found, otherwise a slow pulse so a first-timer knows where to pinch.
+                    c = tutorialFound ? FrameRight
+                                      : Color.Lerp(FrameIdle, FrameHover, 0.5f + 0.5f * Mathf.Sin(Time.time * 4f));
+                    if (!tutorialFound && hovered != null && hovered.Index == i) c = FrameHover;
                 }
                 else if (hovered != null && hovered.Index == i) c = FrameHover;
                 Frames[i].startColor = Frames[i].endColor = c;

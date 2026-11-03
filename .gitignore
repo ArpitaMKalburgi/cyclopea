@@ -123,3 +123,5 @@ __pycache__/
 /Tools/shots/
 /Tools/*.log
 /Tools/captures-motion/
+/Tools/captures-creatures/
+/Assets/Resources/PerformanceTestRunInfo.json*
