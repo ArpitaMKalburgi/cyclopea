@@ -18,6 +18,7 @@ namespace Cyclopea
         public ScoreAnchor Scores;
         public PlatformServices Platform;
         public SurfaceFinder Surface;
+        public RoomAcoustics Acoustics;
 
         [DebugMember(Category = Stereo, Min = -1, Max = 1, Description = "+1 crossed (creature floats), -1 uncrossed (sinks)")]
         public float DisparitySign { get => StereoPatch.OffsetSign; set => StereoPatch.OffsetSign = value >= 0 ? 1f : -1f; }
@@ -69,6 +70,9 @@ namespace Cyclopea
 
         [DebugMember(Category = Live, Tweakable = false)]
         public string AnchorStatus => Scores != null ? Scores.Status : "-";
+
+        [DebugMember(Category = Live, Tweakable = false)]
+        public string RoomAudio => Acoustics != null ? Acoustics.Status : "-";
 
         [DebugMember(Category = Live, Tweakable = false)]
         public string PlatformStatus => Platform != null ? Platform.Status : "-";

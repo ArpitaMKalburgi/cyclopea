@@ -63,6 +63,9 @@ namespace Cyclopea.PlayTests
                 Assert.That(t.GetComponents<Component>().All(c => c != null), "missing script on " + t.name);
             var dev = Object.FindFirstObjectByType<DevControls>();
             Assert.That(dev.Isdk != null && dev.HandRay != null && dev.Dwell != null, "input modes wired");
+            Assert.That(s.CreatureVoice != null && s.CreatureVoice.spatialBlend == 1f &&
+                        s.CreatureVoice.GetComponent<MetaXRAudioSource>() != null, "creature voice is spatialised by Meta XR Audio");
+            Assert.NotNull(Object.FindFirstObjectByType<RoomAcoustics>(), "room acoustics");
             Assert.NotNull(Object.FindFirstObjectByType<DevControls>());
             Assert.That(s.Patches.Count(p => p.Arcsec > 0), Is.EqualTo(1), "exactly one square hides a creature");
             Assert.That(s.Patches.All(p => p.GetComponent<IsdkPatchEvents>() is IsdkPatchEvents e && e.Ray != null && e.Gaze != null),

@@ -63,7 +63,8 @@ namespace Cyclopea.PlayTests
 
             var total = new Stats();
             var perRoom = new StringBuilder();
-            int roomCount = 0;
+            int roomCount = 0, acousticRooms = 0;
+            float clutterSum = 0f;
             foreach (var path in rooms.Concat(jsons))
             {
                 System.Threading.Tasks.Task<MRUK.LoadDeviceResult> task;
@@ -80,6 +81,10 @@ namespace Cyclopea.PlayTests
                     roomCount++;
                     var st = new Stats();
                     Sweep(room, Path.GetFileNameWithoutExtension(path), st);
+                    var fit = RoomAcoustics.FitRoom(room);
+                    Assert.That(fit.Size.x >= 1.5f && fit.Size.y >= 2f && fit.Size.z >= 1.5f && fit.Clutter >= 0f && fit.Clutter <= 1f,
+                                "acoustic room fits " + path);
+                    acousticRooms++; clutterSum += fit.Clutter;
                     Merge(total, st);
                     perRoom.AppendLine($"| {Path.GetFileNameWithoutExtension(path)} | {st.Seats} | {st.Table} | {st.Wall} | {st.Easel} | " +
                                        $"{(st.TableSeats > 0 ? $"{st.TableSeatsOnTable}/{st.TableSeats}" : "-")} | {st.Bad} |");
@@ -102,6 +107,7 @@ namespace Cyclopea.PlayTests
             md.AppendLine($"| Why a table seat didn't get a table | {string.Join(", ", total.TableMisses.OrderByDescending(k => k.Value).Select(k => k.Key + " " + k.Value))} |");
             md.AppendLine($"| Widest angle from gaze centre to a grid corner | {total.WorstGridDeg:0.0}° (limit {FovHalfLimitDeg}°) |");
             md.AppendLine($"| Widest angle from gaze centre to the title | {total.WorstTitleDeg:0.0}° (limit {FovHalfLimitDeg}°) |");
+            md.AppendLine($"| Meta XR Audio room model sized from the scan | {acousticRooms} rooms, mean clutter {(acousticRooms > 0 ? clutterSum / acousticRooms : 0):0.00} |");
             md.AppendLine();
             md.AppendLine("| Room | Seats | Table | Wall | Easel | Table seats on a table | Invalid |");
             md.AppendLine("|---|---|---|---|---|---|---|");

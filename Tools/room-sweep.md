@@ -13,6 +13,7 @@ Seats: one at every side of every table (eye 45 cm above the top, 45 cm back, fa
 | Why a table seat didn't get a table | chose a wall 47, surface cluttered 37, line of sight blocked 12 |
 | Widest angle from gaze centre to a grid corner | 26.1° (limit 27°) |
 | Widest angle from gaze centre to the title | 24.6° (limit 27°) |
+| Meta XR Audio room model sized from the scan | 87 rooms, mean clutter 0.54 |
 
 | Room | Seats | Table | Wall | Easel | Table seats on a table | Invalid |
 |---|---|---|---|---|---|---|
@@ -27,27 +28,27 @@ Seats: one at every side of every table (eye 45 cm above the top, 45 cm back, fa
 | Bedroom08 | 12 | 0 | 4 | 7 | - | 0 |
 | Bedroom09 | 12 | 0 | 5 | 5 | - | 0 |
 | Basement | 12 | 0 | 4 | 8 | - | 0 |
-| Basement | 15 | 5 | 5 | 5 | 3/3 | 0 |
 | Basement | 12 | 0 | 4 | 7 | - | 0 |
 | Basement | 12 | 0 | 5 | 7 | - | 0 |
+| Basement | 15 | 5 | 5 | 5 | 3/3 | 0 |
 | FullFloor | 15 | 0 | 5 | 10 | 0/3 | 0 |
 | FullFloor | 12 | 0 | 3 | 7 | - | 0 |
-| FullFloor | 17 | 5 | 4 | 8 | 5/5 | 0 |
 | FullFloor | 12 | 0 | 2 | 9 | - | 0 |
-| SingleFloor | 12 | 0 | 3 | 9 | - | 0 |
-| SingleFloor | 21 | 10 | 4 | 6 | 7/9 | 0 |
+| FullFloor | 17 | 5 | 4 | 8 | 5/5 | 0 |
 | SingleFloor | 12 | 0 | 3 | 7 | - | 0 |
 | SingleFloor | 12 | 0 | 1 | 11 | - | 0 |
+| SingleFloor | 21 | 10 | 4 | 6 | 7/9 | 0 |
 | SingleFloor | 15 | 0 | 4 | 8 | 0/3 | 0 |
 | SingleFloor | 21 | 8 | 7 | 5 | 4/9 | 0 |
-| SplitLevel | 12 | 0 | 5 | 6 | - | 0 |
-| SplitLevel | 12 | 0 | 4 | 8 | - | 0 |
+| SingleFloor | 12 | 0 | 3 | 9 | - | 0 |
 | SplitLevel | 15 | 1 | 7 | 5 | 1/3 | 0 |
+| SplitLevel | 12 | 0 | 4 | 8 | - | 0 |
+| SplitLevel | 12 | 0 | 5 | 6 | - | 0 |
 | SplitLevel | 15 | 1 | 5 | 8 | 1/3 | 0 |
 | SplitLevel | 23 | 8 | 4 | 8 | 5/11 | 0 |
 | ThreeFloors | 12 | 0 | 3 | 7 | - | 0 |
-| ThreeFloors | 14 | 1 | 8 | 5 | 1/2 | 0 |
 | ThreeFloors | 15 | 4 | 7 | 4 | 2/3 | 0 |
+| ThreeFloors | 14 | 1 | 8 | 5 | 1/2 | 0 |
 | ThreeFloors | 14 | 3 | 4 | 7 | 2/2 | 0 |
 | ThreeFloors | 12 | 0 | 4 | 8 | - | 0 |
 | ThreeRooms | 12 | 0 | 5 | 5 | - | 0 |
@@ -61,9 +62,9 @@ Seats: one at every side of every table (eye 45 cm above the top, 45 cm back, fa
 | ThreeRooms3 | 16 | 3 | 4 | 9 | 2/4 | 0 |
 | TwoRooms | 15 | 0 | 5 | 8 | 0/3 | 0 |
 | TwoRooms | 15 | 5 | 2 | 7 | 3/3 | 0 |
-| Upstairs | 18 | 7 | 5 | 3 | 4/6 | 0 |
-| Upstairs | 15 | 6 | 3 | 3 | 3/3 | 0 |
 | Upstairs | 12 | 0 | 6 | 3 | - | 0 |
+| Upstairs | 15 | 6 | 3 | 3 | 3/3 | 0 |
+| Upstairs | 18 | 7 | 5 | 3 | 4/6 | 0 |
 | Upstairs | 14 | 2 | 3 | 4 | 2/2 | 0 |
 | LivingRoom00 | 16 | 4 | 2 | 7 | 4/4 | 0 |
 | LivingRoom01 | 20 | 7 | 1 | 7 | 7/8 | 0 |

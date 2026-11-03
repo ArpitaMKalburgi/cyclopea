@@ -1,1 +1,1 @@
-[Cyclopea] Build Succeeded: Builds/Cyclopea-dev.apk 100 MB (104,729,923 bytes), 0 errors, 00:10:39
+[Cyclopea] Build Succeeded: C:/Hackathons/Meta VR Start Developer Competition 2026/cyclopea/Builds/Cyclopea-dev.apk 100 MB, 0 errors, 00:08:48.4560702

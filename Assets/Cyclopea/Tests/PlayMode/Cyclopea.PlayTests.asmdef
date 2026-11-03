@@ -8,7 +8,8 @@
         "UnityEditor.TestRunner",
         "meta.xr.mrutilitykit",
         "Oculus.VR",
-        "Oculus.Interaction"
+        "Oculus.Interaction",
+        "Meta.XR.Audio"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

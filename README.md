@@ -6,7 +6,7 @@ Entry for the Meta VR Start Developer Competition 2026, Gaming / New Experience.
 
 ## Build
 
-Unity 6000.0.85f1 (6.0 LTS) with Android Build Support. Packages resolve from Unity's registry and Meta's (`npm.developer.oculus.com`): Meta XR Core, Interaction SDK, MR Utility Kit and Platform 207, URP 17, OpenXR 1.18 (1.17+ is needed for Meta XR Operator), XR Hands. How every Meta tool named in the competition rules is used: [`../TOOLS.md`](../TOOLS.md).
+Unity 6000.0.85f1 (6.0 LTS) with Android Build Support. Packages resolve from Unity's registry and Meta's (`npm.developer.oculus.com`): Meta XR Core, Interaction SDK, MR Utility Kit and Platform 207, URP 17, OpenXR 1.18 (1.17+ is needed for Meta XR Operator), XR Hands, Meta XR Audio 85 (spatializer). How every Meta tool named in the competition rules is used: [`../TOOLS.md`](../TOOLS.md).
 
 Everything is scriptable headless:
 
@@ -44,6 +44,7 @@ Assets/Cyclopea/
     MicrogestureSelector               thumb-only play (swipe to move, tap to pick)
     HandRaySelector, HeadDwellSelector, VoiceSelector, KeyboardSelector   backup / accessibility / editor inputs
     PassthroughMood                    room dims while a creature hides
+    RoomAcoustics                      Meta XR Audio reverb room sized from the MRUK scan; the creature's chirp plays from where it floated
     DeskCamouflage                     round 2 in the desk's colours (Passthrough Camera API, asked for after round 1)
     ScoreAnchor                        today's score left on the desk (persistent spatial anchor) + streak
     PlatformServices                   entitlement, achievements, days-in-a-row leaderboard (Platform SDK)
@@ -72,14 +73,14 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Per-eye shift, production shader through URP | within 0.008 px rms of commanded, from 47.7 px down to 0.1 px |
 | Eyes identical outside the creature | mean abs difference 0.0000 |
 | One eye alone, privileged observer told the outline | 19.5–29.2 % in 4-choice trials (chance 25 %), 40 images per condition |
-| Unit tests in Unity | 40 / 40 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing) |
+| Unit tests in Unity | 44 / 44 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax) |
 | Scene wiring | every square is an ISDK ray + gaze target; no missing scripts; all input modes wired |
 | Whole session in the real scene, simulated 60″ observer | completes in 55 trials, Depth Score 83″, log written |
-| Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°) |
+| Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°); Meta XR Audio room model fits every room |
 | Random-guessing player | gets the honest "no stereo measured" card, no number; the next pinch starts motion mode |
 | Motion mode (head-motion parallax, one eye is enough) | see `Tools/motion-report.md`; in the real scene only the target square slides, and a simulated player finishes with a Motion Depth Score |
 | Dev APK | builds clean, 100 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
-| Judge APK (release) | builds clean, 71 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |
+| Judge APK (release) | builds clean, 73 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |
 
 What only the headset can answer: that multiview delivers each eye its own image (eye-tint check), the pop direction, frame rate, and the human one-eye control. See `DEVICE-DAY.md`.
 

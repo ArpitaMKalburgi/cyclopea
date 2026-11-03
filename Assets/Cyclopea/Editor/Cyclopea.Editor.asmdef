@@ -15,7 +15,8 @@
         "Unity.XR.OpenXR.Editor",
         "Oculus.Interaction",
         "Oculus.Interaction.OVR",
-        "Oculus.Platform"
+        "Oculus.Platform",
+        "Meta.XR.Audio"
     ],
     "includePlatforms": [
         "Editor"

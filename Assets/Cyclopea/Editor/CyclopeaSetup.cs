@@ -58,6 +58,7 @@ namespace Cyclopea.EditorTools
             RunMetaFixes(report);
             ConfigureOpenXR(report);
             ConfigurePlatform(report);
+            ConfigureAudio(report);
             SetImmersiveDebugger(true, report);
             BuildScene(report);
             AssetDatabase.SaveAssets();
@@ -273,6 +274,18 @@ namespace Cyclopea.EditorTools
             EditorUtility.SetDirty(settings);
             report.AppendLine("OpenXR render mode: " + settings.renderMode);
             report.AppendLine("OpenXR features on: " + string.Join(", ", enabled));
+        }
+
+        // ---------- Meta XR Audio ----------
+
+        /// <summary>Meta XR Audio as the project's spatializer (HRTF + room acoustics for the creature's voice).</summary>
+        static void ConfigureAudio(StringBuilder report)
+        {
+            const string name = "Meta XR Audio";
+            bool available = AudioSettings.GetSpatializerPluginNames().Contains(name);
+            if (available) AudioSettings.SetSpatializerPluginName(name);
+            report.AppendLine("Spatializer: " + (available ? name : "Meta XR Audio not found, Unity default panning") +
+                              " (current: " + AudioSettings.GetSpatializerPluginName() + ")");
         }
 
         // ---------- Platform SDK + Immersive Debugger ----------
@@ -541,6 +554,26 @@ namespace Cyclopea.EditorTools
             session.Audio.playOnAwake = false;
             session.Audio.spatialBlend = 0f;
 
+            // The creature's voice: a spatialised source moved to where the creature floated.
+            var voiceGo = new GameObject("CreatureVoice (Meta XR Audio)");
+            voiceGo.transform.SetParent(game.transform, false);
+            var creatureVoice = voiceGo.AddComponent<AudioSource>();
+            creatureVoice.playOnAwake = false;
+            creatureVoice.spatialBlend = 1f;
+            creatureVoice.spatialize = true;
+            creatureVoice.rolloffMode = AudioRolloffMode.Logarithmic;
+            creatureVoice.minDistance = 0.3f; creatureVoice.maxDistance = 6f;
+            var mxa = voiceGo.AddComponent<MetaXRAudioSource>();
+            mxa.EnableSpatialization = true;
+            mxa.EnableAcoustics = true;
+            session.CreatureVoice = creatureVoice;
+
+            // Reverb shaped like the player's own scanned room.
+            var roomGo = new GameObject("RoomAcoustics (Meta XR Audio + MRUK)");
+            var roomProps = roomGo.AddComponent<MetaXRAudioRoomAcousticProperties>();
+            var roomAcoustics = roomGo.AddComponent<RoomAcoustics>();
+            roomAcoustics.Room = roomProps;
+
             var dev = game.AddComponent<DevControls>();
             dev.LeftHand = left; dev.RightHand = right;
             dev.Session = session; dev.Dwell = dwell; dev.HandRay = handRay; dev.Isdk = isdk;
@@ -556,7 +589,7 @@ namespace Cyclopea.EditorTools
             platform.Session = session; platform.Scores = scores;
             var tuning = game.AddComponent<TuningPanel>();
             tuning.Session = session; tuning.Mood = mood; tuning.Camouflage = camo; tuning.Scores = scores;
-            tuning.Platform = platform; tuning.Surface = finder;
+            tuning.Platform = platform; tuning.Surface = finder; tuning.Acoustics = roomAcoustics;
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };

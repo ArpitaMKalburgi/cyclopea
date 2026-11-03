@@ -23,6 +23,8 @@ namespace Cyclopea
         public PatchSelector[] Selectors;
         public TextMesh Title, Status;
         public AudioSource Audio;
+        [Tooltip("Spatialised source (Meta XR Audio) moved to the creature for feedback, so you hear where it was. Falls back to Audio.")]
+        public AudioSource CreatureVoice;
 
         [Header("Layout")]
         public float PatchSize = 0.12f;
@@ -220,7 +222,7 @@ namespace Cyclopea
             chosen = p.Index;
             if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = Math.Max(level, 1920);
             else Patches[target].MotionArcsec = Math.Max(level, 1920);
-            Play(correct ? clipRight : clipWrong);
+            PlayAtCreature(correct ? clipRight : clipWrong, Patches[target], Math.Max(level, 1920));
             state = State.Feedback;
             stateUntil = Time.time + FeedbackSeconds;
         }
@@ -309,6 +311,16 @@ namespace Cyclopea
         }
 
         void Play(AudioClip c) { if (Audio != null && c != null) Audio.PlayOneShot(c); }
+
+        /// <summary>Feedback sound from the point where the creature floats (patch centre, lifted by its pop-out depth).</summary>
+        void PlayAtCreature(AudioClip c, StereoPatch p, double levelArcsec)
+        {
+            if (CreatureVoice == null || p == null || c == null) { Play(c); return; }
+            Vector3 toViewer = -p.transform.forward;
+            float lift = (float)DisparityMath.PopOutMeters(levelArcsec, p.LastViewingDistance);
+            CreatureVoice.transform.position = p.transform.position + toViewer * Mathf.Min(lift, 0.15f);
+            CreatureVoice.PlayOneShot(c);
+        }
 
         double Mean(Func<StereoPatch, double> f)
         {
