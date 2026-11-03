@@ -5,7 +5,10 @@
         "Cyclopea.Core",
         "Oculus.VR",
         "meta.xr.mrutilitykit",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Oculus.Interaction",
+        "Oculus.Platform",
+        "Meta.XR.ImmersiveDebugger.Interface"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -24,11 +24,17 @@ namespace Cyclopea
         static readonly int ContrastLId = Shader.PropertyToID("_ContrastL");
         static readonly int ContrastRId = Shader.PropertyToID("_ContrastR");
         static readonly int DebugEyeTintId = Shader.PropertyToID("_DebugEyeTint");
+        static readonly int BackgroundId = Shader.PropertyToID("_Background");
+        static readonly int DotColorId = Shader.PropertyToID("_DotColor");
 
         // Global switches, changed by DevControls and the one-eye control.
         public static float OffsetSign = 1f;
         public static bool DebugEyeTint;
         public static float ContrastL = 1f, ContrastR = 1f;
+
+        // Palette of the static (sRGB). DeskCamouflage swaps these for the player's desk colours in round 2.
+        public static Color BackgroundColor = new Color(0.10f, 0.10f, 0.12f, 1f);
+        public static Color DotColor = new Color(0.92f, 0.92f, 0.92f, 1f);
 
         // Dot geometry in metres on the surface: ~3 mm dots on a ~6 mm grid read as fine static at 60 cm.
         public static float CellSizeM = 0.006f;
@@ -86,6 +92,8 @@ namespace Cyclopea
             block.SetFloat(ContrastLId, ContrastL);
             block.SetFloat(ContrastRId, ContrastR);
             block.SetFloat(DebugEyeTintId, DebugEyeTint ? 1f : 0f);
+            block.SetColor(BackgroundId, BackgroundColor);
+            block.SetColor(DotColorId, DotColor);
             meshRenderer.SetPropertyBlock(block);
         }
     }

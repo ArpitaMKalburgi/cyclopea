@@ -1,11 +1,15 @@
 URP: Assets/Cyclopea/Settings/Cyclopea_URP.asset (MSAA 4x, HDR off, shadows off)
 Player: com.ujwal240.cyclopea, IL2CPP, ARM64, API 32+, Vulkan, Linear, ASTC
-OVRProjectConfig: hands+controllers, passthrough, scene, anchors
+OVRProjectConfig: hands+controllers, passthrough, scene, anchors, passthrough camera access
+XR Operator: editor binaries present True, activated True
 Meta Project Setup Tool: FixTasks(Android) x3
 OpenXR loader on Android: True
 OpenXR render mode: SinglePassInstanced
-OpenXR features on: MetaQuestFeature, OculusTouchControllerProfile, MetaHandTrackingAim, HandTracking, MetaXRFeature
-Scene: Assets/Cyclopea/Scenes/Cyclopea.unity (rig, passthrough underlay, hands, MRUK, 4 patches, session)
+OpenXR features on: HandInteractionProfile, MetaHandTrackingAim, MetaQuestFeature, MetaXRFeature, MetaXRFoveationFeature, MetaXRSpaceWarp, MetaXRSubsampledLayout, OculusTouchControllerProfile, HandTracking
+Platform SDK: Quest App ID 1408927408970808
+Immersive Debugger: on
+ISDK rig: OVRComprehensiveInteractionRig (1 objects), locomotion off: [LocomotionControllerInteractorGroup, TeleportActiveState, ControllerLocomotionSlideActions, LocomotionTeleportAudio, EnterLocomotionSound, ExitLocomotionSound, TeleportSound, ScrollLocomotionGate, MicroGesturesLocomotionHandInteractorGroup, LocomotionGate, TeleportMicrogestureInteractor, TurnerMicrogesture, StepMicrogesture, LocomotionTeleportAudio, EnterLocomotionSound, ExitLocomotionSound, TeleportSound, LocomotionOutput, LocomotionControllerInteractorGroup, TeleportActiveState, ControllerTurnerInteractor, ControllerLocomotionSlideActions, LocomotionTeleportAudio, EnterLocomotionSound, ExitLocomotionSound, TeleportSound, ScrollLocomotionGate, MicroGesturesLocomotionHandInteractorGroup, LocomotionGate, TeleportMicrogestureInteractor, TurnerMicrogesture, StepMicrogesture, LocomotionTeleportAudio, EnterLocomotionSound, ExitLocomotionSound, TeleportSound, LocomotionOutput, Locomotor, BodyTeleportInteractor, LocomotionSettings], hand meshes masked: 18
+Scene: Assets/Cyclopea/Scenes/Cyclopea.unity (rig, passthrough underlay, hands, ISDK rig + gaze, microgestures, MRUK, depth raycast, passthrough camera, 4 patches, session, anchor, platform, tuning)
 
 Checks:
   build target: Android

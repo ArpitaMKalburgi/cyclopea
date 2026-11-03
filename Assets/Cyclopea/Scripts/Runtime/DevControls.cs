@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using Cyclopea.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -9,8 +11,10 @@ namespace Cyclopea
     ///   left middle-finger pinch  : eye tint on/off (left eye red, right eye blue)
     ///   left ring-finger pinch    : cycle eyes Both -> Left only -> Right only (the one-eye control)
     ///   left pinky pinch          : flip disparity sign (if creatures sink instead of float)
-    ///   right middle-finger pinch : toggle head-gaze dwell selection (eyes-only mode)
-    /// Keyboard in the editor: T, E, O, H, plus N = next tester id, R = restart.
+    ///   right middle-finger pinch : cycle input: ISDK (point or look + pinch) -> raw OVR ray (backup)
+    ///                               -> head-gaze dwell (eyes-only)
+    /// Keyboard in the editor: T, E, O, H (input), plus N = next tester id, R = restart.
+    /// Finger switches exist only in development builds; the judge build has none of them.
     /// The left index pinch is never used here; it stays the game's select.
     /// </summary>
     public sealed class DevControls : MonoBehaviour
@@ -21,17 +25,29 @@ namespace Cyclopea
         public SpotSession Session;
         public HeadDwellSelector Dwell;
         public HandRaySelector HandRay;
+        public IsdkSelector Isdk;
+
+        public enum InputMode { Isdk, RawRay, Dwell }
+        public static InputMode Mode = InputMode.Isdk;
+        static bool? fingerSwitches;
+        // Read lazily: Debug.isDebugBuild may not be touched from a MonoBehaviour field initializer.
+        public static bool FingerSwitches { get => fingerSwitches ??= Debug.isDebugBuild; set => fingerSwitches = value; }
 
         bool lm, lr, lp, rm;
 
-        void Start() => Apply();
+        void Start() { Apply(); SetMode(Mode, false); }
 
         void Update()
         {
-            if (Edge(LeftHand, OVRHand.HandFinger.Middle, ref lm)) ToggleTint();
-            if (Edge(LeftHand, OVRHand.HandFinger.Ring, ref lr)) CycleEyes();
-            if (Edge(LeftHand, OVRHand.HandFinger.Pinky, ref lp)) FlipSign();
-            if (Edge(RightHand, OVRHand.HandFinger.Middle, ref rm)) ToggleDwell();
+            if (FingerSwitches)
+            {
+                if (Edge(LeftHand, OVRHand.HandFinger.Middle, ref lm)) ToggleTint();
+                if (Edge(LeftHand, OVRHand.HandFinger.Ring, ref lr)) CycleEyes();
+                if (Edge(LeftHand, OVRHand.HandFinger.Pinky, ref lp)) FlipSign();
+                if (Edge(RightHand, OVRHand.HandFinger.Middle, ref rm)) ToggleDwell();
+            }
+
+            if (FingerSwitches && Time.unscaledTime >= nextRemote) { nextRemote = Time.unscaledTime + 0.5f; PollRemote(); }
 
             var kb = Keyboard.current;
             if (kb == null) return;
@@ -41,6 +57,39 @@ namespace Cyclopea
             if (kb.hKey.wasPressedThisFrame) ToggleDwell();
             if (kb.nKey.wasPressedThisFrame) NextTester();
             if (kb.rKey.wasPressedThisFrame && Session != null) Session.Restart();
+        }
+
+        // ---------- Remote control for agents (development builds only) ----------
+        // Tools/quest.sh push-remote writes <persistentDataPath>/remote.txt over adb; each line is key=value:
+        //   tint=1|0  eyes=Both|LeftOnly|RightOnly  sign=1|-1  mode=Isdk|RawRay|Dwell  restart=1  choose=0..3
+        // The file is deleted once applied. Lets an agent (Meta VR CLI / XR Operator over MCP) drive the
+        // device checks without injecting finger pinches.
+        float nextRemote;
+
+        void PollRemote()
+        {
+            string path = Path.Combine(Application.persistentDataPath, "remote.txt");
+            if (!File.Exists(path)) return;
+            string[] lines;
+            try { lines = File.ReadAllLines(path); File.Delete(path); }
+            catch (Exception e) { Debug.LogWarning("[Cyclopea] remote read failed: " + e.Message); return; }
+            foreach (var raw in lines)
+            {
+                var kv = raw.Split('=');
+                if (kv.Length != 2) continue;
+                string k = kv[0].Trim().ToLowerInvariant(), v = kv[1].Trim();
+                switch (k)
+                {
+                    case "tint": StereoPatch.DebugEyeTint = v == "1"; Say("Remote: tint " + v); break;
+                    case "eyes":
+                        if (Enum.TryParse(v, true, out SessionLog.EyeCondition e)) { Eyes = e; Apply(); Say("Remote: eyes " + e); if (Session != null) Session.Restart(); }
+                        break;
+                    case "sign": StereoPatch.OffsetSign = v.StartsWith("-") ? -1f : 1f; Say("Remote: sign " + StereoPatch.OffsetSign); break;
+                    case "mode": if (Enum.TryParse(v, true, out InputMode m)) SetMode(m, true); break;
+                    case "restart": if (Session != null) Session.Restart(); break;
+                    case "choose": if (Session != null && int.TryParse(v, out int i)) Session.Choose(i, "remote"); break;
+                }
+            }
         }
 
         static bool Edge(OVRHand hand, OVRHand.HandFinger f, ref bool down)
@@ -72,12 +121,19 @@ namespace Cyclopea
             Say(StereoPatch.OffsetSign > 0 ? "Disparity: crossed (+1)" : "Disparity: uncrossed (-1)");
         }
 
-        void ToggleDwell()
+        void ToggleDwell() => SetMode((InputMode)(((int)Mode + 1) % 3), true);
+
+        /// <summary>Exactly one pinch path is live at a time, so one pinch can never answer twice.</summary>
+        public void SetMode(InputMode m, bool announce)
         {
-            if (Dwell == null) return;
-            Dwell.enabled = !Dwell.enabled;
-            if (HandRay != null) HandRay.enabled = !Dwell.enabled;
-            Say(Dwell.enabled ? "Eyes-only mode: look and hold" : "Hand mode: point and pinch");
+            Mode = m;
+            if (Isdk != null) Isdk.enabled = m == InputMode.Isdk;
+            if (HandRay != null) HandRay.enabled = m == InputMode.RawRay || (m == InputMode.Isdk && Isdk == null);
+            if (Dwell != null) Dwell.enabled = m == InputMode.Dwell;
+            if (!announce) return;
+            Say(m == InputMode.Isdk ? "Input: point or look, then pinch (Interaction SDK)"
+              : m == InputMode.RawRay ? "Input: raw hand ray + pinch (backup path)"
+              : "Eyes-only mode: look and hold");
         }
 
         void NextTester()

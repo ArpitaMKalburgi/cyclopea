@@ -6,7 +6,7 @@ Entry for the Meta VR Start Developer Competition 2026, Gaming / New Experience.
 
 ## Build
 
-Unity 6000.0.85f1 (6.0 LTS) with Android Build Support. Packages resolve from Unity's registry and Meta's (`npm.developer.oculus.com`): Meta XR Core, Interaction SDK, MR Utility Kit and Platform 207, URP 17, OpenXR 1.16, XR Hands.
+Unity 6000.0.85f1 (6.0 LTS) with Android Build Support. Packages resolve from Unity's registry and Meta's (`npm.developer.oculus.com`): Meta XR Core, Interaction SDK, MR Utility Kit and Platform 207, URP 17, OpenXR 1.18 (1.17+ is needed for Meta XR Operator), XR Hands. How every Meta tool named in the competition rules is used: [`../TOOLS.md`](../TOOLS.md).
 
 Everything is scriptable headless:
 
@@ -15,6 +15,7 @@ UNITY=/c/Unity/Editors/6000.0.85f1/Editor/Unity.exe
 P="C:\\Hackathons\\Meta VR Start Developer Competition 2026\\cyclopea"
 $UNITY -batchmode -quit -buildTarget Android -projectPath "$P" -executeMethod Cyclopea.EditorTools.CyclopeaSetup.Setup        # configure project + build scene
 $UNITY -batchmode -quit -buildTarget Android -projectPath "$P" -executeMethod Cyclopea.EditorTools.CyclopeaSetup.SceneAndApk  # rebuild scene + Builds/Cyclopea-dev.apk
+$UNITY -batchmode -quit -buildTarget Android -projectPath "$P" -executeMethod Cyclopea.EditorTools.CyclopeaSetup.BuildJudgeApk # release build for the Competition channel
 $UNITY -batchmode -quit -buildTarget Android -projectPath "$P" -executeMethod Cyclopea.EditorTools.CyclopeaSetup.CaptureEyes  # offline per-eye renders
 $UNITY -batchmode -buildTarget Android -projectPath "$P" -runTests -testPlatform EditMode -testResults Tools/editmode-results.xml
 $UNITY -batchmode -buildTarget Android -projectPath "$P" -runTests -testPlatform PlayMode -testResults Tools/playmode-results.xml
@@ -29,24 +30,38 @@ The same steps are on the **Cyclopea** menu inside the editor.
 ```
 Assets/Cyclopea/
   Shaders/RandomDotStereogram.shader   per-eye procedural random-dot field (Poisson), sub-pixel disparity via unity_StereoEyeIndex,
-                                       force-eye and eye-tint debug modes, decoys, per-eye contrast (one-eye control)
-  Scripts/Core/                        engine-independent psychophysics (no UnityEngine references)
-    DisparityMath, Staircase, SkillLadder, SimulatedObserver, SessionLog, SecretCode, PatchLayout
-  Scripts/Runtime/
-    StereoPatch.cs                     one square of static; keeps disparity constant as the head moves
-    SurfaceFinder.cs                   scanned table, else wall, else a floating easel
-    Selectors.cs                       pinch ray (either hand), head-gaze dwell (eyes-only), keyboard/mouse
-    SpotSession.cs                     4-choice Spot rung: staircase, feedback, JSONL log, Depth Score card
-    DevControls.cs                     finger-pinch switches for eye tint, one-eye control, pop direction, dwell mode
-  Editor/CyclopeaSetup.cs              headless setup, scene build, APK build, per-eye captures
-  Tests/Editor/                        15 NUnit tests (staircase convergence, ladder, secret codes, layout)
-  Tests/PlayMode/                      loads the real scene and plays whole sessions with a simulated player
+                                       force-eye and eye-tint debug modes, decoys, per-eye contrast (one-eye control), palette
+  Shaders/HandOccluder.shader          depth-only hand mask: the real (passthrough) hand is always in front of the static
+  Scripts/Core/                        engine-independent logic (no UnityEngine references)
+    DisparityMath, Staircase, SkillLadder, SimulatedObserver, SessionLog, SecretCode, PatchLayout,
+    Camouflage (desk palette with guaranteed contrast), Streak (days in a row), VoiceCommands (spoken square choice)
+  Scripts/Runtime/                     one MonoBehaviour per file (Unity only serialises a class whose name matches its file)
+    StereoPatch                        one square of static; keeps disparity constant as the head moves
+    SurfaceFinder                      MRUK table/wall checked against the room -> Depth API PlaceBox -> easel that finds open space
+    SpotSession                        4-choice Spot rung: staircase, feedback, JSONL log, Depth Score card, rounds
+    IsdkSelector, IsdkPatchEvents      Interaction SDK hand rays + v207 GazeInteractor (look and pinch)
+    HeadGaze, EitherHandPinch          head-pose gaze source and pinch selector for the GazeInteractor
+    MicrogestureSelector               thumb-only play (swipe to move, tap to pick)
+    HandRaySelector, HeadDwellSelector, VoiceSelector, KeyboardSelector   backup / accessibility / editor inputs
+    PassthroughMood                    room dims while a creature hides
+    DeskCamouflage                     round 2 in the desk's colours (Passthrough Camera API, asked for after round 1)
+    ScoreAnchor                        today's score left on the desk (persistent spatial anchor) + streak
+    PlatformServices                   entitlement, achievements, days-in-a-row leaderboard (Platform SDK)
+    TuningPanel                        Immersive Debugger panel (dev builds)
+    DevControls                        finger switches + adb file remote (dev builds only)
+  Editor/CyclopeaSetup.cs              headless setup (incl. ISDK rig via its wizard, XR Operator, Immersive Debugger), scene, APKs, captures
+  Tests/Editor/                        40 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice)
+  Tests/PlayMode/                      real scene: wiring (no missing scripts), simulated sessions, 58-room placement sweep
 Tools/
+  quest.sh                             install / run / log / sessions / stats / remote / Meta VR CLI perf + fov / OVR Metrics /
+                                       XR Operator per-eye check / upload to the Competition channel
   verify_captures.py                   checks rendered per-eye images: commanded shift, and no one-eye cue
-  captures-report.md                   latest result of the above
+  operator_eyes.py                     same question on the headset, through Meta XR Operator captures
+  reveal.py                            per-eye pair -> anaglyph + "what your two eyes compare" frame (trailer, gallery)
+  room-sweep.md, captures-report.md    latest results
   stats.py                             test-retest ICC, one-eye control vs chance, norms comparison
-  quest.sh                             install / run / log / pull sessions / stats / screenshot / fps
   StaircaseHarness/                    .NET harness for the core without Unity
+web/index.html                         Stereo Secrets in the Quest Browser (WebXR, three.js eye layers): share link + backup stereo path
 ```
 
 ## Verified before the headset
@@ -56,10 +71,13 @@ Tools/
 | Per-eye shift, production shader through URP | within 0.008 px rms of commanded, from 47.7 px down to 0.1 px |
 | Eyes identical outside the creature | mean abs difference 0.0000 |
 | One eye alone, privileged observer told the outline | 19.5–29.2 % in 4-choice trials (chance 25 %), 40 images per condition |
-| Unit tests in Unity | 15 / 15 |
+| Unit tests in Unity | 40 / 40 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing) |
+| Scene wiring | every square is an ISDK ray + gaze target; no missing scripts; all input modes wired |
 | Whole session in the real scene, simulated 60″ observer | completes in 55 trials, Depth Score 83″, log written |
+| Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°) |
 | Random-guessing player | gets the honest "no stereo measured" card, no number |
-| Dev APK | builds clean, 71 MB, arm64, API 32+, Vulkan, OpenXR multiview |
+| Dev APK | builds clean, 100 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
+| Judge APK (release) | builds clean, 71 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |
 
 What only the headset can answer: that multiview delivers each eye its own image (eye-tint check), the pop direction, frame rate, and the human one-eye control. See `DEVICE-DAY.md`.
 

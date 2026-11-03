@@ -116,3 +116,9 @@ Tools/StaircaseHarness/obj/
 *.apk
 /.vscode/
 __pycache__/
+/Assets/XR/APILayers~/
+/Tools/reveal/
+/Tools/device-eyes/
+/Tools/perf/
+/Tools/shots/
+/Tools/*.log

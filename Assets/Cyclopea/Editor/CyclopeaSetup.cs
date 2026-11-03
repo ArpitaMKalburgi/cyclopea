@@ -5,6 +5,10 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Cyclopea.Core;
+using Meta.XR;
+using Oculus.Interaction;
+using Oculus.Interaction.Input;
+using Oculus.Interaction.Surfaces;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -50,8 +54,11 @@ namespace Cyclopea.EditorTools
             ConfigureUrp(report);
             ConfigurePlayer(report);
             ConfigureMetaProjectConfig(report);
+            ActivateXrOperator(report);
             RunMetaFixes(report);
             ConfigureOpenXR(report);
+            ConfigurePlatform(report);
+            SetImmersiveDebugger(true, report);
             BuildScene(report);
             AssetDatabase.SaveAssets();
             report.AppendLine(CheckList());
@@ -72,20 +79,41 @@ namespace Cyclopea.EditorTools
         [MenuItem("Cyclopea/2. Build dev APK")]
         public static void BuildApk()
         {
+            var sb = new StringBuilder();
+            SetImmersiveDebugger(true, sb);
+            Build("Builds/Cyclopea-dev.apk", BuildOptions.Development, "Tools/build-report.txt");
+        }
+
+        /// <summary>
+        /// The build judges get: release (no Development flag, so Meta's build processor drops the XR
+        /// Operator AAR and its screen-capture permission), Immersive Debugger off, finger switches off.
+        /// </summary>
+        [MenuItem("Cyclopea/2b. Build judge APK (release)")]
+        public static void BuildJudgeApk()
+        {
+            var sb = new StringBuilder();
+            SetImmersiveDebugger(false, sb);
+            try { Build("Builds/Cyclopea-judge.apk", BuildOptions.None, "Tools/build-judge-report.txt"); }
+            finally { SetImmersiveDebugger(true, sb); AssetDatabase.SaveAssets(); }
+        }
+
+        static void Build(string path, BuildOptions opts, string reportPath)
+        {
             Directory.CreateDirectory("Builds");
+            AssetDatabase.SaveAssets();
             var options = new BuildPlayerOptions
             {
                 scenes = new[] { ScenePath },
-                locationPathName = "Builds/Cyclopea-dev.apk",
+                locationPathName = path,
                 target = BuildTarget.Android,
                 targetGroup = BuildTargetGroup.Android,
-                options = BuildOptions.Development
+                options = opts
             };
             BuildReport r = BuildPipeline.BuildPlayer(options);
             string msg = $"[Cyclopea] Build {r.summary.result}: {r.summary.outputPath} " +
-                         $"{r.summary.totalSize / (1024 * 1024)} MB, {r.summary.totalErrors} errors, {r.summary.totalTime}";
+                         $"{(File.Exists(path) ? new FileInfo(path).Length : 0) / (1024 * 1024)} MB, {r.summary.totalErrors} errors, {r.summary.totalTime}";
             Debug.Log(msg);
-            File.WriteAllText("Tools/build-report.txt", msg + "\n");
+            File.WriteAllText(reportPath, msg + "\n");
             if (Application.isBatchMode && r.summary.result != BuildResult.Succeeded) EditorApplication.Exit(1);
         }
 
@@ -169,8 +197,9 @@ namespace Cyclopea.EditorTools
             cfg.insightPassthroughSupport = OVRProjectConfig.FeatureSupport.Supported;
             cfg.sceneSupport = OVRProjectConfig.FeatureSupport.Supported;
             cfg.anchorSupport = OVRProjectConfig.AnchorSupport.Enabled;
+            cfg.isPassthroughCameraAccessEnabled = true;   // HEADSET_CAMERA in the manifest; asked for lazily (round 2)
             OVRProjectConfig.CommitProjectConfig(cfg);
-            report.AppendLine("OVRProjectConfig: hands+controllers, passthrough, scene, anchors");
+            report.AppendLine("OVRProjectConfig: hands+controllers, passthrough, scene, anchors, passthrough camera access");
         }
 
         static void RunMetaFixes(StringBuilder report)
@@ -232,8 +261,9 @@ namespace Cyclopea.EditorTools
             UnityEditor.XR.OpenXR.Features.FeatureHelpers.RefreshFeatures(BuildTargetGroup.Android);
             // Multiview on Quest: one pass, both eyes; unity_StereoEyeIndex comes from gl_ViewID.
             settings.renderMode = OpenXRSettings.RenderMode.SinglePassInstanced;
+            // HandInteractionProfile: lets Meta XR Operator inject synthetic hands (agent-driven device tests).
             var wanted = new[] { "MetaXRFeature", "MetaQuestFeature", "HandTracking", "MetaHandTrackingAim",
-                                 "OculusTouchControllerProfile" };
+                                 "OculusTouchControllerProfile", "HandInteractionProfile" };
             var enabled = new List<string>();
             foreach (var f in settings.GetFeatures())
             {
@@ -243,6 +273,137 @@ namespace Cyclopea.EditorTools
             EditorUtility.SetDirty(settings);
             report.AppendLine("OpenXR render mode: " + settings.renderMode);
             report.AppendLine("OpenXR features on: " + string.Join(", ", enabled));
+        }
+
+        // ---------- Platform SDK + Immersive Debugger ----------
+
+        const string AppId = "1408927408970808";   // public App ID (Developer Dashboard), not a secret
+
+        static void ConfigurePlatform(StringBuilder report)
+        {
+            Oculus.Platform.PlatformSettings.MobileAppID = AppId;
+            foreach (var guid in AssetDatabase.FindAssets("t:PlatformSettings"))
+                EditorUtility.SetDirty(AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guid)));
+            report.AppendLine("Platform SDK: Quest App ID " + AppId);
+        }
+
+        /// <summary>Meta's Immersive Debugger: on for dev builds (in-headset tuning panel), off for the judge build.</summary>
+        static void SetImmersiveDebugger(bool on, StringBuilder report)
+        {
+            Type t = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetType("Meta.XR.ImmersiveDebugger.RuntimeSettings")).FirstOrDefault(x => x != null);
+            var inst = t?.GetProperty("Instance", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+            var prop = t?.GetProperty("ImmersiveDebuggerEnabled", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            if (inst == null || prop == null) { report.AppendLine("Immersive Debugger: settings API not found"); return; }
+            prop.SetValue(inst, on);
+            // Belt and braces: even if it were left on, the panel never appears in a release build.
+            var so = new SerializedObject((UnityEngine.Object)inst);
+            SetBool(so, "enableOnlyInDebugBuild", true);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty((UnityEngine.Object)inst);
+            AssetDatabase.SaveAssets();
+            report.AppendLine("Immersive Debugger: " + (on ? "on" : "off"));
+        }
+
+        /// <summary>
+        /// Meta XR Operator (Core v207, OpenXR 1.17+): an OpenXR API layer with an MCP server inside
+        /// development builds, so an AI agent can inject hands, gaze and pinches and capture each eye.
+        /// Release builds exclude it automatically (MetaXROperatorBuildProcessor).
+        /// </summary>
+        static void ActivateXrOperator(StringBuilder report)
+        {
+            Type t = FindType("Meta.XR.Editor.MetaXROperatorActivator");
+            const BindingFlags F = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static;
+            if (t == null) { report.AppendLine("XR Operator: activator not found"); return; }
+            object present = t.GetMethod("AreBinariesPresent", F)?.Invoke(null, null);
+            try { t.GetMethod("Activate", F)?.Invoke(null, new object[] { "cyclopea-setup" }); }
+            catch (Exception e) { report.AppendLine("XR Operator: activate threw " + (e.InnerException ?? e).Message); }
+            object active = t.GetProperty("IsActivated", F)?.GetValue(null);
+            report.AppendLine($"XR Operator: editor binaries present {present}, activated {active}");
+        }
+
+        // ---------- Interaction SDK ----------
+
+        static Type FindType(string fullName) => AppDomain.CurrentDomain.GetAssemblies()
+            .Select(a => a.GetType(fullName)).FirstOrDefault(x => x != null);
+
+        static void NoEditableCopy(object wizard) =>
+            wizard.GetType().GetMethod("InjectOptionalGenerateAsEditableCopy",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.Invoke(wizard, new object[] { false });
+
+        /// <summary>
+        /// Adds Meta's OVR Comprehensive Interaction Rig (hand rays, poke, grab, ISDK hand visuals) the
+        /// same way the editor's Building Block does, through its internal wizard.
+        /// </summary>
+        static GameObject AddInteractionRig(OVRCameraRig cameraRig, Material handMask, StringBuilder report)
+        {
+            Type wizard = FindType("Oculus.Interaction.OVR.Editor.QuickActions.OVRComprehensiveInteractionRigWizard");
+            Type baseWizard = FindType("Oculus.Interaction.Editor.QuickActions.QuickActionsWizard");
+            var create = baseWizard?.GetMethod("CreateWithDefaults", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            if (wizard == null || create == null) { report.AppendLine("ISDK rig: wizard API not found"); return null; }
+            var inject = Delegate.CreateDelegate(typeof(Action<>).MakeGenericType(wizard),
+                typeof(CyclopeaSetup).GetMethod(nameof(NoEditableCopy), BindingFlags.NonPublic | BindingFlags.Static));
+            var made = ((IEnumerable<GameObject>)create.MakeGenericMethod(wizard).Invoke(null, new object[] { null, true, inject })).ToList();
+            GameObject rig = made.FirstOrDefault(g => g != null && g.GetComponentInChildren<OVRCameraRigRef>(true) != null)
+                             ?? made.FirstOrDefault();
+            if (rig == null) { report.AppendLine("ISDK rig: wizard created nothing"); return null; }
+
+            foreach (var r in rig.GetComponentsInChildren<OVRCameraRigRef>(true)) r.InjectAllOVRCameraRigRef(cameraRig, true);
+
+            // Seated, stationary game: no locomotion of any kind (teleport, turn, microgesture locomotion).
+            var off = new List<string>();
+            foreach (var t in rig.GetComponentsInChildren<Transform>(true))
+            {
+                string n = t.name;
+                if (n.Contains("Locomot") || n.Contains("Teleport") || n.Contains("Turner") || n.Contains("Microgesture"))
+                {
+                    if (t.gameObject.activeSelf) { t.gameObject.SetActive(false); off.Add(n); }
+                }
+            }
+            // Mixed reality: the real hands are seen through passthrough. ISDK's hand mesh becomes a depth
+            // mask, so the static is cut away wherever a real hand is in front of it.
+            int masked = 0;
+            foreach (var smr in rig.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                if (!smr.name.Contains("Hand") && !smr.transform.parent.name.Contains("Hand")) continue;
+                smr.sharedMaterials = Enumerable.Repeat(handMask, Math.Max(1, smr.sharedMaterials.Length)).ToArray();
+                smr.shadowCastingMode = ShadowCastingMode.Off;
+                masked++;
+            }
+            report.AppendLine($"ISDK rig: {rig.name} ({made.Count} objects), locomotion off: [{string.Join(", ", off)}], hand meshes masked: {masked}");
+            return rig;
+        }
+
+        /// <summary>ISDK interactables on one square: hand ray target and gaze target over the quad's collider.</summary>
+        static IsdkPatchEvents AddInteractables(StereoPatch patch)
+        {
+            var go = patch.gameObject;
+            var col = go.GetComponent<Collider>();
+            var surface = go.AddComponent<ColliderSurface>();
+            surface.InjectAllColliderSurface(col);
+            var ray = go.AddComponent<RayInteractable>();
+            ray.InjectAllRayInteractable(surface);
+            var gaze = go.AddComponent<GazeInteractable>();
+            gaze.InjectAllGazeInteractable(surface);
+            var ev = go.AddComponent<IsdkPatchEvents>();
+            ev.Patch = patch; ev.Ray = ray; ev.Gaze = gaze;
+            return ev;
+        }
+
+        /// <summary>ISDK GazeInteractor on head gaze, selecting with a pinch of either hand ("look and pinch").</summary>
+        static GazeInteractor AddGazeInteractor(Transform parent, Transform head, OVRHand left, OVRHand right)
+        {
+            var go = new GameObject("GazeInteractor (head gaze + pinch)");
+            go.transform.SetParent(parent, false);
+            var gazeSource = go.AddComponent<HeadGaze>();
+            gazeSource.Head = head;
+            var pinch = go.AddComponent<EitherHandPinch>();
+            pinch.LeftHand = left; pinch.RightHand = right;
+            var cone = go.AddComponent<GazeConecaster>();
+            cone.InjectAllGazeConecaster(gazeSource);
+            var interactor = go.AddComponent<GazeInteractor>();
+            interactor.InjectAllGazeInteractor(pinch, head, cone);
+            return interactor;
         }
 
         // ---------- Scene ----------
@@ -259,6 +420,7 @@ namespace Cyclopea.EditorTools
                 m.enableInstancing = true;
             });
             var frameMat = MakeMaterial(MaterialsDir + "/Frame.mat", Shader.Find("Sprites/Default"), null);
+            var handMask = MakeMaterial(MaterialsDir + "/HandMask.mat", Shader.Find("Cyclopea/HandOccluder"), null);
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -272,8 +434,9 @@ namespace Cyclopea.EditorTools
             manager.trackingOriginType = OVRManager.TrackingOrigin.FloorLevel;
             var mso = new SerializedObject(manager);
             SetBool(mso, "requestScenePermissionOnStartup", true);
+            SetBool(mso, "requestPassthroughCameraAccessPermissionOnStartup", false);   // asked after round 1
             mso.ApplyModifiedPropertiesWithoutUndo();
-            rig.AddComponent<OVRPassthroughLayer>();   // always an underlay in this SDK
+            var passthrough = rig.AddComponent<OVRPassthroughLayer>();   // always an underlay in this SDK
 
             Transform center = cameraRig.transform.Find("TrackingSpace/CenterEyeAnchor");
             var cam = center.GetComponent<Camera>();
@@ -288,9 +451,21 @@ namespace Cyclopea.EditorTools
             var handPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Packages/com.meta.xr.sdk.core/Prefabs/OVRHandPrefab.prefab");
             OVRHand left = MakeHand(handPrefab, cameraRig.transform.Find("TrackingSpace/LeftHandAnchor"), true);
             OVRHand right = MakeHand(handPrefab, cameraRig.transform.Find("TrackingSpace/RightHandAnchor"), false);
+            var leftGestures = left.gameObject.AddComponent<OVRMicrogestureEventSource>();
+            leftGestures.Hand = left;
+            var rightGestures = right.gameObject.AddComponent<OVRMicrogestureEventSource>();
+            rightGestures.Hand = right;
+            AddInteractionRig(cameraRig, handMask, report);
 
             // Scene model (tables, walls).
             var mrukPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Packages/com.meta.xr.mrutilitykit/Core/Tools/MRUK.prefab");
+            var depthGo = new GameObject("EnvironmentRaycast (Depth API)");
+            var depth = depthGo.AddComponent<EnvironmentRaycastManager>();
+            var cameraGo = new GameObject("PassthroughCamera (round 2 camouflage)");
+            var cameraAccess = cameraGo.AddComponent<PassthroughCameraAccess>();
+            cameraAccess.CameraPosition = PassthroughCameraAccess.CameraPositionType.Left;
+            cameraAccess.RequestedResolution = new Vector2Int(640, 480);
+            cameraAccess.enabled = false;
             if (mrukPrefab != null)
             {
                 // Real scan only. The prefab default falls back to a random sample room, which would put
@@ -306,8 +481,10 @@ namespace Cyclopea.EditorTools
             var game = new GameObject("Cyclopea");
             var finder = game.AddComponent<SurfaceFinder>();
             finder.Head = center;
+            finder.Depth = depth;
 
             var patches = new StereoPatch[4];
+            var isdkEvents = new IsdkPatchEvents[4];
             var frames = new LineRenderer[4];
             for (int i = 0; i < 4; i++)
             {
@@ -317,6 +494,7 @@ namespace Cyclopea.EditorTools
                 q.GetComponent<MeshRenderer>().sharedMaterial = rds;
                 q.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
                 patches[i] = q.AddComponent<StereoPatch>();
+                isdkEvents[i] = AddInteractables(patches[i]);
 
                 var frameGo = new GameObject("Frame");
                 frameGo.transform.SetParent(q.transform, false);
@@ -343,13 +521,20 @@ namespace Cyclopea.EditorTools
             var keys = game.AddComponent<KeyboardSelector>();
             keys.Patches = patches;
             keys.Cam = cam;
+            AddGazeInteractor(game.transform, center, left, right);
+            var isdk = game.AddComponent<IsdkSelector>();
+            isdk.Patches = isdkEvents;
+            var micro = game.AddComponent<MicrogestureSelector>();
+            micro.Left = leftGestures; micro.Right = rightGestures; micro.Patches = patches;
 
             var session = game.AddComponent<SpotSession>();
             session.Head = center;
             session.Surface = finder;
             session.Patches = patches;
             session.Frames = frames;
-            session.Selectors = new PatchSelector[] { handRay, dwell, keys };
+            var voice = game.AddComponent<VoiceSelector>();
+            voice.Patches = patches; voice.Session = session;
+            session.Selectors = new PatchSelector[] { isdk, handRay, dwell, micro, voice, keys };
             session.Title = MakeText("Title", game.transform, 0.0011f, 72);
             session.Status = MakeText("Status", game.transform, 0.0007f, 56);
             session.Audio = game.AddComponent<AudioSource>();
@@ -358,11 +543,25 @@ namespace Cyclopea.EditorTools
 
             var dev = game.AddComponent<DevControls>();
             dev.LeftHand = left; dev.RightHand = right;
-            dev.Session = session; dev.Dwell = dwell; dev.HandRay = handRay;
+            dev.Session = session; dev.Dwell = dwell; dev.HandRay = handRay; dev.Isdk = isdk;
+            handRay.enabled = false;   // backup path; DevControls switches it on if ISDK misbehaves
+
+            var mood = game.AddComponent<PassthroughMood>();
+            mood.Layer = passthrough; mood.Session = session;
+            var camo = game.AddComponent<DeskCamouflage>();
+            camo.Session = session; camo.CameraAccess = cameraAccess;
+            var scores = game.AddComponent<ScoreAnchor>();
+            scores.Session = session; scores.Head = center;
+            var platform = game.AddComponent<PlatformServices>();
+            platform.Session = session; platform.Scores = scores;
+            var tuning = game.AddComponent<TuningPanel>();
+            tuning.Session = session; tuning.Mood = mood; tuning.Camouflage = camo; tuning.Scores = scores;
+            tuning.Platform = platform; tuning.Surface = finder;
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
-            report.AppendLine("Scene: " + ScenePath + " (rig, passthrough underlay, hands, MRUK, 4 patches, session)");
+            report.AppendLine("Scene: " + ScenePath + " (rig, passthrough underlay, hands, ISDK rig + gaze, microgestures, MRUK, " +
+                              "depth raycast, passthrough camera, 4 patches, session, anchor, platform, tuning)");
         }
 
         static OVRHand MakeHand(GameObject prefab, Transform anchor, bool isLeft)

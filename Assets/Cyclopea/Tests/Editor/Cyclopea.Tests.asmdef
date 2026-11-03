@@ -4,7 +4,9 @@
     "references": [
         "Cyclopea.Core",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "Cyclopea.Runtime",
+        "Oculus.VR"
     ],
     "includePlatforms": [
         "Editor"

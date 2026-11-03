@@ -58,8 +58,21 @@ namespace Cyclopea.PlayTests
             Assert.NotNull(s.Head, "head transform");
             Assert.NotNull(s.Surface, "surface finder");
             Assert.That(s.Selectors.Length, Is.GreaterThanOrEqualTo(3));
+            Assert.That(s.Selectors.All(x => x != null), "every selector is a real component, not a missing script");
+            foreach (var t in s.GetComponentsInChildren<Transform>(true))
+                Assert.That(t.GetComponents<Component>().All(c => c != null), "missing script on " + t.name);
+            var dev = Object.FindFirstObjectByType<DevControls>();
+            Assert.That(dev.Isdk != null && dev.HandRay != null && dev.Dwell != null, "input modes wired");
             Assert.NotNull(Object.FindFirstObjectByType<DevControls>());
             Assert.That(s.Patches.Count(p => p.Arcsec > 0), Is.EqualTo(1), "exactly one square hides a creature");
+            Assert.That(s.Patches.All(p => p.GetComponent<IsdkPatchEvents>() is IsdkPatchEvents e && e.Ray != null && e.Gaze != null),
+                "each square is an Interaction SDK ray target and gaze target");
+            Assert.NotNull(Object.FindFirstObjectByType<Oculus.Interaction.GazeInteractor>(), "ISDK gaze interactor");
+            Assert.NotNull(Object.FindFirstObjectByType<IsdkSelector>());
+            Assert.NotNull(Object.FindFirstObjectByType<MicrogestureSelector>());
+            Assert.NotNull(Object.FindFirstObjectByType<Meta.XR.EnvironmentRaycastManager>(), "depth raycast fallback");
+            Assert.NotNull(Object.FindFirstObjectByType<ScoreAnchor>());
+            Assert.NotNull(Object.FindFirstObjectByType<TuningPanel>());
             yield return null;
         }
 

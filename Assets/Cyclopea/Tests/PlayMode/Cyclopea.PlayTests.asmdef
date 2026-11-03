@@ -5,7 +5,10 @@
         "Cyclopea.Core",
         "Cyclopea.Runtime",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "meta.xr.mrutilitykit",
+        "Oculus.VR",
+        "Oculus.Interaction"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

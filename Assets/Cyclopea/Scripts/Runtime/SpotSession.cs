@@ -38,6 +38,19 @@ namespace Cyclopea
 
         enum State { Trial, Feedback, Done }
 
+        /// <summary>What a finished session produced; other systems (score anchor, camouflage, platform) listen for it.</summary>
+        public struct Result
+        {
+            public int Round, Trials;
+            public bool Measured, AtFloor;
+            public double ThresholdArcsec, ViewingDistanceM;
+            public string ScoreLine;
+        }
+
+        public event Action<Result> Finished;
+        public event Action<int> RoundStarting;
+        public int Round { get; private set; }
+
         State state;
         SkillLadder ladder;
         SessionLog log;
@@ -110,7 +123,12 @@ namespace Cyclopea
             string dir = Path.Combine(Application.persistentDataPath, "sessions");
             Directory.CreateDirectory(dir);
             filePath = Path.Combine(dir, sessionId + ".jsonl");
-            if (Title != null) Title.text = "One square hides a creature.\nOnly two eyes can see it. Pinch it.";
+            Round++;
+            RoundStarting?.Invoke(Round);
+            if (Title != null)
+                Title.text = Round == 1
+                    ? "One square hides a creature.\nOnly two eyes can see it. Pinch it."
+                    : "Round " + Round + ". Same creatures, harder to find.\nPinch the one you see.";
             NextTrial();
         }
 
@@ -118,6 +136,7 @@ namespace Cyclopea
         {
             if (Surface == null) return;
             if (s.Normal == Vector3.zero) s = Surface.Current;
+            if (Surface.FacingObstacle) Toast("Something is very close in front of you.\nTurn toward open space.", 5f);
             var rot = SurfaceFinder.QuadRotation(s);
             float step = (PatchSize + Gap) * 0.5f;
             Vector2[] grid = { new Vector2(-1, 1), new Vector2(1, 1), new Vector2(-1, -1), new Vector2(1, -1) };
@@ -197,13 +216,19 @@ namespace Cyclopea
             });
             Flush();
 
+            string line = measured ? SkillLadder.Describe(SkillLadder.Rung.Spot, thr, atFloor, z) : "";
             if (Title != null)
             {
                 Title.text = measured
-                    ? "Depth Score\n" + SkillLadder.Describe(SkillLadder.Rung.Spot, thr, atFloor, z)
+                    ? "Depth Score\n" + line
                     : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
             }
             Toast("Pinch any square to play again", 9999f);
+            Finished?.Invoke(new Result
+            {
+                Round = Round, Trials = trialIndex, Measured = measured, AtFloor = atFloor,
+                ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line
+            });
         }
 
         void Update()

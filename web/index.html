@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cyclopea Secret</title>
+<style>
+  :root { --bg: #111214; --fg: #e8e8ea; --muted: #9a9ca3; --accent: #7cf0a4; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { max-width: 34rem; margin: 0 auto; padding: 2rem 1rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .5rem; }
+  p { color: var(--muted); }
+  canvas.preview { width: 100%; max-width: 20rem; image-rendering: pixelated; border-radius: 6px; display: block; margin: 1rem 0; }
+  button { font: inherit; padding: .7rem 1.2rem; border-radius: 999px; border: 0; background: var(--accent); color: #0b0c0d; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { margin-top: 1rem; font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>A message only two eyes can read</h1>
+  <p>Open this page in the Meta Quest Browser and press Enter. Each eye gets its own field of static. One eye, a phone or a screenshot sees only noise: the message exists only in the difference.</p>
+  <canvas class="preview" id="preview" width="256" height="256" aria-label="What one eye sees: plain static"></canvas>
+  <button id="enter" disabled>Checking for a headset…</button>
+  <div id="status"></div>
+</main>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.170.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ?s=SECRET&d=disparity-in-cells (default 6 cells of 4 px on a 512 px field, about 1900 arcsec at 60 cm).
+const q = new URLSearchParams(location.search);
+const secret = (q.get('s') || 'HELLO').slice(0, 8).toUpperCase();
+const shift = Math.max(1, Math.min(16, parseInt(q.get('d') || '6', 10)));
+const N = 512, CELL = 4, C = N / CELL;
+
+// Mask: the secret word, rasterised to the cell grid.
+const mc = document.createElement('canvas'); mc.width = mc.height = C;
+const m = mc.getContext('2d');
+m.fillStyle = '#000'; m.fillRect(0, 0, C, C);
+m.fillStyle = '#fff'; m.textAlign = 'center'; m.textBaseline = 'middle';
+m.font = `900 ${Math.floor(C / Math.max(3, secret.length * 0.62))}px system-ui, sans-serif`;
+m.fillText(secret, C / 2, C / 2);
+const md = m.getImageData(0, 0, C, C).data;
+const inside = (x, y) => md[(y * C + x) * 4] > 127;
+
+// Random-dot stereogram pair (1960): right = left outside the mask; inside, the field shifts and fresh dots fill the gap.
+const rnd = () => Math.random() < 0.5 ? 1 : 0;
+const L = Array.from({ length: C * C }, rnd);
+const R = L.slice();
+for (let y = 0; y < C; y++) for (let x = 0; x < C; x++) {
+  if (!inside(x, y)) continue;
+  const sx = x + shift;
+  R[y * C + x] = sx < C && inside(sx, y) ? L[y * C + sx] : rnd();
+}
+function toCanvas(cells) {
+  const c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1a1a1f'; g.fillRect(0, 0, N, N);
+  g.fillStyle = '#ebebeb';
+  for (let y = 0; y < C; y++) for (let x = 0; x < C; x++) if (cells[y * C + x]) g.fillRect(x * CELL, y * CELL, CELL, CELL);
+  return c;
+}
+const leftCanvas = toCanvas(L), rightCanvas = toCanvas(R);
+document.getElementById('preview').getContext('2d').drawImage(leftCanvas, 0, 0, 256, 256);
+
+// Scene: two quads at the same place. three.js renders WebXR layer 1 only to the left eye and layer 2 only to the right.
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
+renderer.xr.setReferenceSpaceType('local');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 20);
+// The base camera stays on layer 0 only: three.js gives each eye camera the base mask plus its own layer,
+// so enabling layer 1 here would leak the left image into the right eye.
+const geo = new THREE.PlaneGeometry(0.24, 0.24);
+function quad(canvas, layer) {
+  const t = new THREE.CanvasTexture(canvas);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t }));
+  mesh.position.set(0, -0.12, -0.6);
+  mesh.layers.set(layer);
+  scene.add(mesh);
+}
+quad(leftCanvas, 1);
+quad(rightCanvas, 2);
+
+const btn = document.getElementById('enter'), status = document.getElementById('status');
+let mode = null;
+if (navigator.xr) {
+  if (await navigator.xr.isSessionSupported('immersive-ar').catch(() => false)) mode = 'immersive-ar';
+  else if (await navigator.xr.isSessionSupported('immersive-vr').catch(() => false)) mode = 'immersive-vr';
+}
+if (mode) { btn.disabled = false; btn.textContent = 'Enter'; }
+else { btn.textContent = 'Open on a headset'; status.textContent = 'No WebXR headset found. On a flat screen there is only one eye, so the message cannot appear.'; }
+
+btn.addEventListener('click', async () => {
+  try {
+    const session = await navigator.xr.requestSession(mode, { optionalFeatures: ['local-floor'] });
+    await renderer.xr.setSession(session);
+    document.body.appendChild(renderer.domElement);
+    session.addEventListener('end', () => renderer.domElement.remove());
+  } catch (e) { status.textContent = 'Could not start: ' + e.message; }
+});
+renderer.setAnimationLoop(() => renderer.render(scene, camera));
+</script>
+</body>
+</html>
