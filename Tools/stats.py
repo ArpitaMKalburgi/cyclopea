@@ -68,8 +68,17 @@ def main():
     ap.add_argument("--norms", help="CSV percentile,arcsec from i-Perception 2015")
     a = ap.parse_args()
     trials, summaries = load(a.logs)
+    # Motion-parallax sessions measure something else (depth from head movement, one eye is enough);
+    # every stereo number below uses stereo sessions only. Logs from before the cue field are stereo.
+    motion_summaries = [s for s in summaries if s.get("cue") == "Motion"]
+    trials = [t for t in trials if t.get("cue", "Stereo") == "Stereo"]
+    summaries = [s for s in summaries if s.get("cue", "Stereo") == "Stereo"]
 
     print("## Cyclopea — measured numbers\n")
+    if motion_summaries:
+        done = [s for s in motion_summaries if s.get("threshold_arcsec") is not None]
+        print(f"Motion-parallax sessions (reported separately, not in any stereo number): {len(motion_summaries)}, "
+              f"{len(done)} with a measured step.\n")
 
     # 1. Test-retest: first two Both-eyes sessions per subject with a finite threshold.
     per_subject = defaultdict(list)

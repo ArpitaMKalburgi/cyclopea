@@ -725,6 +725,79 @@ namespace Cyclopea.EditorTools
             Debug.Log("[Cyclopea] Per-eye captures written to " + outDir);
         }
 
+        /// <summary>
+        /// Motion-parallax mode through the production shader: the same patch rendered with the head
+        /// 3 cm left (A) and 3 cm right (B) of centre, left eye, plus the right eye at A. The creature's
+        /// dots must slide by the commanded amount between A and B, and both eyes must be identical.
+        /// Writes Tools/captures-motion/ for Tools/verify_motion.py.
+        /// </summary>
+        [MenuItem("Cyclopea/4b. Capture motion parallax (offline)")]
+        public static void CaptureMotion()
+        {
+            string outDir = "Tools/captures-motion";
+            if (Directory.Exists(outDir)) Directory.Delete(outDir, true);
+            Directory.CreateDirectory(outDir);
+            var mat = new Material(Shader.Find("Cyclopea/RandomDotStereogram"));
+            mat.SetColor("_Background", new Color(0.10f, 0.10f, 0.12f, 1f));
+            mat.SetColor("_DotColor", new Color(0.92f, 0.92f, 0.92f, 1f));
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            var camGo = new GameObject("CaptureCam");
+            var cam = camGo.AddComponent<Camera>();
+            cam.orthographic = true; cam.orthographicSize = 0.5f;
+            cam.transform.position = new Vector3(0, 0, -1);
+            cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.magenta;
+            cam.nearClipPlane = 0.1f; cam.farClipPlane = 5f; cam.allowMSAA = false;
+            const int size = 1024;
+            var rt = new RenderTexture(size, size, 24, RenderTextureFormat.ARGB32) { antiAliasing = 1 };
+            rt.Create();
+            cam.targetTexture = rt; cam.aspect = 1f;
+
+            const double z = 0.6, patch = 0.12, sway = 0.03;
+            var manifest = new StringBuilder("[\n");
+            bool first = true;
+            var rng = new System.Random(19);
+            foreach (double level in new[] { 1920.0, 480.0, 0.0 })
+            for (int k = 0; k < 6; k++)
+            {
+                float seed = (float)(rng.NextDouble() * 1000);
+                float cx = 0.5f + (float)(rng.NextDouble() - 0.5) * 0.12f, cy = 0.5f + (float)(rng.NextDouble() - 0.5) * 0.12f;
+                float wobble = 0.08f + (float)rng.NextDouble() * 0.14f, lobes = 3 + rng.Next(0, 4);
+                mat.SetFloat("_Seed", seed);
+                mat.SetVector("_MaskCenter", new Vector4(cx, cy, 0, 0));
+                mat.SetFloat("_MaskRadius", 0.27f); mat.SetFloat("_MaskWobble", wobble); mat.SetFloat("_MaskLobes", lobes);
+                mat.SetFloat("_CellSize", (float)(StereoPatch.CellSizeM / patch));
+                mat.SetFloat("_DotRadius", (float)(StereoPatch.DotRadiusM / patch));
+                mat.SetFloat("_EyeOffset", 0f); mat.SetFloat("_OffsetSign", 1f);
+                double depth = DisparityMath.PopOutMeters(level, z);
+                // Same expression as StereoPatch.MotionShiftUV.
+                float csA = (float)(-DisparityMath.MotionShiftMeters(-sway, depth, z) / patch);
+                float csB = (float)(-DisparityMath.MotionShiftMeters(+sway, depth, z) / patch);
+                string stem = $"{size}_{level:0}_{k:00}";
+                void Shot(float cs, int eye, string tag)
+                {
+                    mat.SetFloat("_CommonShift", cs);
+                    mat.SetFloat("_ForceEye", eye);
+                    Render(cam, rt);
+                    Save(rt, $"{outDir}/{stem}_{tag}.png");
+                }
+                Shot(csA, 0, "A"); Shot(csB, 0, "B"); Shot(csA, 1, "AR");
+                if (!first) manifest.Append(",\n");
+                first = false;
+                // Content is displayed at -shift, so B relative to A slides by -(csB - csA) * size pixels.
+                manifest.Append($"  {{\"stem\":\"{stem}\",\"size\":{size},\"arcsec\":{level},\"depth_m\":{depth:0.######}," +
+                                $"\"sway_m\":{sway},\"expect_px\":{-(csB - csA) * size:0.####}," +
+                                $"\"mask_center\":[{cx:0.####},{cy:0.####}],\"mask_radius\":0.27," +
+                                $"\"mask_wobble\":{wobble:0.####},\"mask_lobes\":{lobes},\"mask_phase\":{seed:0.###}}}");
+            }
+            manifest.Append("\n]\n");
+            File.WriteAllText(outDir + "/manifest.json", manifest.ToString());
+            cam.targetTexture = null; rt.Release();
+            UnityEngine.Object.DestroyImmediate(quad);
+            UnityEngine.Object.DestroyImmediate(camGo);
+            Debug.Log("[Cyclopea] Motion captures written to " + outDir);
+        }
+
         static void Render(Camera cam, RenderTexture rt)
         {
             var request = new RenderPipeline.StandardRequest { destination = rt };

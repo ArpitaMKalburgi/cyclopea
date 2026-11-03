@@ -26,6 +26,7 @@ namespace Cyclopea
         static readonly int DebugEyeTintId = Shader.PropertyToID("_DebugEyeTint");
         static readonly int BackgroundId = Shader.PropertyToID("_Background");
         static readonly int DotColorId = Shader.PropertyToID("_DotColor");
+        static readonly int CommonShiftId = Shader.PropertyToID("_CommonShift");
 
         // Global switches, changed by DevControls and the one-eye control.
         public static float OffsetSign = 1f;
@@ -36,12 +37,20 @@ namespace Cyclopea
         public static Color BackgroundColor = new Color(0.10f, 0.10f, 0.12f, 1f);
         public static Color DotColor = new Color(0.92f, 0.92f, 0.92f, 1f);
 
+        // Motion mode assist: adds a gentle simulated side-to-side sway (metres, Hz) for players who
+        // can't move their head. Off by default; the default motion cue is the player's own head.
+        public static bool AutoSway;
+        public static float SwayAmplitudeM = 0.03f, SwayHz = 0.5f;
+
         // Dot geometry in metres on the surface: ~3 mm dots on a ~6 mm grid read as fine static at 60 cm.
         public static float CellSizeM = 0.006f;
         public static float DotRadiusM = 0.0016f;
 
         [Tooltip("Disparity presented inside the creature mask, arcseconds. 0 = plain static.")]
         public double Arcsec;
+        [Tooltip("Motion mode: the creature sits at the depth this many arcseconds of disparity would give, " +
+                 "shown only through head-motion parallax (identical in both eyes). 0 = off.")]
+        public double MotionArcsec;
         public bool Decoy;
         public float Seed;
         public Vector2 MaskCenter = new Vector2(0.5f, 0.5f);
@@ -52,6 +61,7 @@ namespace Cyclopea
 
         public Transform Head;
         public double LastViewingDistance { get; private set; } = 0.6;
+        public float LastCommonShiftUV { get; private set; }
 
         MeshRenderer meshRenderer;
         MaterialPropertyBlock block;
@@ -70,6 +80,22 @@ namespace Cyclopea
                                      0.5f + (float)(rng.NextDouble() - 0.5) * 0.12f);
             MaskWobble = 0.08f + (float)rng.NextDouble() * 0.14f;
             MaskLobes = 3 + rng.Next(0, 4);
+        }
+
+        /// <summary>
+        /// Head-motion parallax for a creature floating MotionArcsec-worth of depth above the patch:
+        /// the head's sideways offset in the patch's own frame, projected through that depth.
+        /// Shader convention: content is displayed at -shift, so the UV term is the negated slide.
+        /// </summary>
+        float MotionShiftUV(float width)
+        {
+            if (MotionArcsec <= 0 || Head == null) return 0f;
+            Vector3 d = Head.position - transform.position;
+            double zPerp = Mathf.Max(0.15f, Vector3.Dot(d, -transform.forward));
+            double lateral = Vector3.Dot(d, transform.right);
+            if (AutoSway) lateral += SwayAmplitudeM * Mathf.Sin(2f * Mathf.PI * SwayHz * Time.time);
+            double depth = DisparityMath.PopOutMeters(MotionArcsec, zPerp);
+            return (float)(-DisparityMath.MotionShiftMeters(lateral, depth, zPerp) / width);
         }
 
         void LateUpdate()
@@ -94,6 +120,7 @@ namespace Cyclopea
             block.SetFloat(DebugEyeTintId, DebugEyeTint ? 1f : 0f);
             block.SetColor(BackgroundId, BackgroundColor);
             block.SetColor(DotColorId, DotColor);
+            block.SetFloat(CommonShiftId, LastCommonShiftUV = MotionShiftUV(width));
             meshRenderer.SetPropertyBlock(block);
         }
     }

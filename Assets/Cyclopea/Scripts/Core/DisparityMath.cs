@@ -24,6 +24,19 @@ namespace Cyclopea.Core
         public static double PopOutMeters(double arcsec, double z, double ipd = DefaultIpd)
             => arcsec / ArcsecPerRadian * z * z / ipd;
 
+        /// <summary>
+        /// Motion parallax: how far a point `depth` metres in front of the surface appears to slide
+        /// along it when the viewer's eye is `lateral` metres to the side of it, at perpendicular
+        /// distance `zPerp`. Positive = toward +x. Same projection as stereo: an eye at -ipd/2 sees
+        /// +ipd/2 * depth / (z - depth), which is the crossed half-disparity.
+        /// </summary>
+        public static double MotionShiftMeters(double lateral, double depth, double zPerp)
+        {
+            if (zPerp <= 0 || depth <= 0) return 0;
+            depth = Math.Min(depth, 0.9 * zPerp);
+            return -lateral * depth / (zPerp - depth);
+        }
+
         /// <summary>Shader `_EyeOffset` (UV units) for a patch `patchWidth` metres wide.</summary>
         public static float EyeOffsetUV(double arcsec, double z, double patchWidth)
             => (float)(ShiftMeters(arcsec, z) / patchWidth);

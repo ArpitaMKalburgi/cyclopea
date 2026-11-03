@@ -45,6 +45,22 @@ namespace Cyclopea
             public bool Measured, AtFloor;
             public double ThresholdArcsec, ViewingDistanceM;
             public string ScoreLine;
+            public SessionLog.Cue Cue;
+        }
+
+        /// <summary>
+        /// What carries the creature. Stereo: disparity only (one eye sees nothing). Motion: depth shown
+        /// only through head-motion parallax, the same in both eyes, so players without stereo vision
+        /// (and a headset whose per-eye rendering failed) still get the game and a score.
+        /// </summary>
+        public SessionLog.Cue Cue { get; private set; } = SessionLog.Cue.Stereo;
+        bool lastMeasured = true;
+
+        /// <summary>Switch cue and start a new session with it.</summary>
+        public void StartCue(SessionLog.Cue cue)
+        {
+            Cue = cue;
+            Restart();
         }
 
         public event Action<Result> Finished;
@@ -126,9 +142,11 @@ namespace Cyclopea
             Round++;
             RoundStarting?.Invoke(Round);
             if (Title != null)
-                Title.text = Round == 1
-                    ? "One square hides a creature.\nOnly two eyes can see it. Pinch it."
-                    : "Round " + Round + ". Same creatures, harder to find.\nPinch the one you see.";
+                Title.text = Cue == SessionLog.Cue.Motion
+                    ? "Sway your head gently from side to side.\nOne square's static slides differently. Pinch it."
+                    : Round == 1
+                        ? "One square hides a creature.\nOnly two eyes can see it. Pinch it."
+                        : "Round " + Round + ". Same creatures, harder to find.\nPinch the one you see.";
             NextTrial();
         }
 
@@ -161,7 +179,9 @@ namespace Cyclopea
             for (int i = 0; i < Patches.Length; i++)
             {
                 Patches[i].Reshuffle(rng);
-                Patches[i].Arcsec = i == target ? ladder.CurrentArcsec : 0.0;
+                double lv = i == target ? ladder.CurrentArcsec : 0.0;
+                Patches[i].Arcsec = Cue == SessionLog.Cue.Stereo ? lv : 0.0;
+                Patches[i].MotionArcsec = Cue == SessionLog.Cue.Motion ? lv : 0.0;
                 Patches[i].Decoy = false;
             }
             chosen = -1;
@@ -171,7 +191,13 @@ namespace Cyclopea
 
         void OnSelected(StereoPatch p, string method)
         {
-            if (state == State.Done) { Restart(); return; }
+            if (state == State.Done)
+            {
+                // After the honest "no stereo" card, the next pinch starts the motion version.
+                if (Cue == SessionLog.Cue.Stereo && !lastMeasured) StartCue(SessionLog.Cue.Motion);
+                else Restart();
+                return;
+            }
             if (state != State.Trial || p == null) return;
 
             bool correct = p.Index == target;
@@ -185,14 +211,15 @@ namespace Cyclopea
                 SessionId = sessionId, SubjectId = subjectId, Device = device, UtcTime = DateTime.UtcNow,
                 Index = trialIndex++, LevelArcsec = level, ViewingDistanceM = z,
                 Mode = SessionLog.CatchMode.FourAFC, Eyes = DevControls.Eyes, Correct = correct,
-                ReactionMs = (int)((Time.time - trialStart) * 1000), Decoy = false, Phase = phase
+                ReactionMs = (int)((Time.time - trialStart) * 1000), Decoy = false, Phase = phase, Cue = Cue
             });
             Flush();
             ladder.Respond(correct);
 
             // Feedback: show where it was, clearly, so the player learns what to look for.
             chosen = p.Index;
-            Patches[target].Arcsec = Math.Max(level, 1920);
+            if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = Math.Max(level, 1920);
+            else Patches[target].MotionArcsec = Math.Max(level, 1920);
             Play(correct ? clipRight : clipWrong);
             state = State.Feedback;
             stateUntil = Time.time + FeedbackSeconds;
@@ -201,7 +228,7 @@ namespace Cyclopea
         void Finish()
         {
             state = State.Done;
-            foreach (var p in Patches) p.Arcsec = 0;
+            foreach (var p in Patches) { p.Arcsec = 0; p.MotionArcsec = 0; }
             var profile = ladder.BuildProfile();
             double z = distances.Count > 0 ? Average(distances) : 0.6;
             bool measured = profile.StereoMeasured && profile.ThresholdArcsec.ContainsKey(SkillLadder.Rung.Spot);
@@ -212,22 +239,27 @@ namespace Cyclopea
             {
                 SessionId = sessionId, SubjectId = subjectId, Device = device, UtcStart = utcStart,
                 Trials = trialIndex, ThresholdArcsec = thr, AtFloor = atFloor, FloorArcsec = floorArcsec,
-                Eyes = DevControls.Eyes
+                Eyes = DevControls.Eyes, Cue = Cue
             });
             Flush();
+            lastMeasured = measured;
 
-            string line = measured ? SkillLadder.Describe(SkillLadder.Rung.Spot, thr, atFloor, z) : "";
+            bool motion = Cue == SessionLog.Cue.Motion;
+            string line = !measured ? "" : motion ? MotionScore.Describe(thr, atFloor, z)
+                                                  : SkillLadder.Describe(SkillLadder.Rung.Spot, thr, atFloor, z);
             if (Title != null)
             {
                 Title.text = measured
-                    ? "Depth Score\n" + line
-                    : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
+                    ? (motion ? "Motion Depth Score\n" : "Depth Score\n") + line
+                    : motion
+                        ? "Not measured this time.\nMove your head a little more and try again."
+                        : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
             }
-            Toast("Pinch any square to play again", 9999f);
+            Toast(!measured && !motion ? "Pinch any square to play with motion instead" : "Pinch any square to play again", 9999f);
             Finished?.Invoke(new Result
             {
                 Round = Round, Trials = trialIndex, Measured = measured, AtFloor = atFloor,
-                ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line
+                ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line, Cue = Cue
             });
         }
 
@@ -254,7 +286,7 @@ namespace Cyclopea
 
             if (Status != null && Time.time > toastUntil && state != State.Done)
                 Status.text = state == State.Trial || state == State.Feedback
-                    ? $"{subjectId}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}"
+                    ? $"{subjectId}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
                     : "";
         }
 

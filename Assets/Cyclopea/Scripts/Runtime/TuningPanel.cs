@@ -37,6 +37,9 @@ namespace Cyclopea
         [DebugMember(Category = Stereo, Description = "Left eye red, right eye blue")]
         public bool EyeTint { get => StereoPatch.DebugEyeTint; set => StereoPatch.DebugEyeTint = value; }
 
+        [DebugMember(Category = Stereo, Description = "Motion mode only: simulated head sway for players who can't move their head")]
+        public bool AutoSway { get => StereoPatch.AutoSway; set => StereoPatch.AutoSway = value; }
+
         [DebugMember(Category = Room, Min = -1, Max = 0)]
         public float TrialBrightness { get => Mood != null ? Mood.TrialBrightness : 0; set { if (Mood != null) Mood.TrialBrightness = value; } }
 
@@ -59,6 +62,9 @@ namespace Cyclopea
         public string Input => DevControls.Mode.ToString();
 
         [DebugMember(Category = Live, Tweakable = false)]
+        public string Cue => Session != null ? Session.Cue.ToString() : "-";
+
+        [DebugMember(Category = Live, Tweakable = false)]
         public string CamouflageStatus => Camouflage != null ? Camouflage.Status : "-";
 
         [DebugMember(Category = Live, Tweakable = false)]
@@ -66,6 +72,12 @@ namespace Cyclopea
 
         [DebugMember(Category = Live, Tweakable = false)]
         public string PlatformStatus => Platform != null ? Platform.Status : "-";
+
+        [DebugMember(Category = Live)]
+        public void StereoMode() { if (Session != null) Session.StartCue(Cyclopea.Core.SessionLog.Cue.Stereo); }
+
+        [DebugMember(Category = Live)]
+        public void MotionMode() { if (Session != null) Session.StartCue(Cyclopea.Core.SessionLog.Cue.Motion); }
 
         [DebugMember(Category = Live)]
         public void RestartSession() { if (Session != null) Session.Restart(); }

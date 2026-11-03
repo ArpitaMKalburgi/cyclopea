@@ -132,6 +132,22 @@ namespace Cyclopea.Core
         }
     }
 
+    public static class MotionScore
+    {
+        /// <summary>
+        /// Score line for the motion-parallax path. The level runs on the same arcsecond scale as
+        /// stereo (so one staircase serves both), but what the player found is a depth step seen by
+        /// moving the head, so the card speaks in millimetres and never in arcseconds.
+        /// </summary>
+        public static string Describe(double levelArcsec, bool atFloor, double viewingDistanceM)
+        {
+            if (double.IsNaN(levelArcsec)) return "Motion: not measured";
+            double mm = DisparityMath.PopOutMeters(levelArcsec, viewingDistanceM) * 1000;
+            return "Motion: " + (atFloor ? "≤ " : "") + "a " + mm.ToString("0.0") + " mm step at " +
+                   (viewingDistanceM * 100).ToString("0") + " cm, found by moving your head";
+        }
+    }
+
     static class StaircaseConfigAccess
     {
         // Staircase keeps its config private; the ceiling is the only value the ladder needs.

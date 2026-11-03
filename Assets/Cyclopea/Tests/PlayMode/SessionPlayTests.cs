@@ -110,6 +110,54 @@ namespace Cyclopea.PlayTests
             yield return Play(s, x => rng.Next(0, 4));
             Assert.True(s.IsDone);
             StringAssert.Contains("didn't use depth from two eyes", s.Title.text);
+
+            // The honest card leads straight into the motion version: the next pinch starts it.
+            s.Choose(0, "test");
+            Assert.That(s.Cue, Is.EqualTo(SessionLog.Cue.Motion));
+            StringAssert.Contains("Sway your head", s.Title.text);
+            s.StartCue(SessionLog.Cue.Stereo);
+        }
+
+        [UnityTest]
+        public IEnumerator MotionModeMovesOnlyTheTargetAndCompletes()
+        {
+            var s = Session();
+            s.StartCue(SessionLog.Cue.Motion);
+            StereoPatch.AutoSway = true;   // the editor has no tracked head; simulate the sway
+            try
+            {
+                Assert.That(s.Patches.All(p => p.Arcsec == 0), "no disparity in motion mode");
+                Assert.That(s.Patches.Count(p => p.MotionArcsec > 0), Is.EqualTo(1));
+                float target = 0, others = 0;
+                for (int f = 0; f < 50; f++)   // 2.5 s real time: more than one full sway period
+                {
+                    yield return new WaitForSecondsRealtime(0.05f);
+                    foreach (var p in s.Patches)
+                        if (p.MotionArcsec > 0) target = Mathf.Max(target, Mathf.Abs(p.LastCommonShiftUV));
+                        else others = Mathf.Max(others, Mathf.Abs(p.LastCommonShiftUV));
+                }
+                Assert.That(target, Is.GreaterThan(0.005f), "the creature's dots slide with the sway");
+                Assert.That(others, Is.EqualTo(0f), "plain static never slides");
+
+                var observer = new SimulatedObserver(120, seed: 8);
+                var rng = new System.Random(3);
+                yield return Play(s, x =>
+                {
+                    if (observer.Respond(x.CurrentArcsec)) return x.CurrentTarget;
+                    int wrong = rng.Next(0, 3);
+                    return wrong >= x.CurrentTarget ? wrong + 1 : wrong;
+                });
+                Assert.True(s.IsDone);
+                StringAssert.Contains("Motion Depth Score", s.Title.text);
+                var lines = File.ReadAllLines(s.LogPath);
+                Assert.That(lines.Where(l => l.Contains("\"type\":\"trial\"")).All(l => l.Contains("\"cue\":\"Motion\"")));
+                Debug.Log("[Cyclopea test] " + s.Title.text.Replace('\n', ' '));
+            }
+            finally
+            {
+                StereoPatch.AutoSway = false;
+                s.StartCue(SessionLog.Cue.Stereo);
+            }
         }
     }
 }

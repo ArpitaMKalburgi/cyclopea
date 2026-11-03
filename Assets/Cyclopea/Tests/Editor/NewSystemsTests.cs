@@ -130,4 +130,49 @@ namespace Cyclopea.Tests
             Assert.That(VoiceCommands.Parse("play again").Again, Is.True);
         }
     }
+
+    public class MotionParallaxTests
+    {
+        [Test]
+        public void EyeOnTheLeftSeesTheCrossedHalfDisparity()
+        {
+            // An eye ipd/2 to the left of a point floating at the stereo pop-out depth must see the
+            // same slide that stereo mode gives that eye: +ipd/2 * h / (z - h), i.e. ~ShiftMeters/2.
+            const double z = 0.6, arcsec = 60;
+            double h = DisparityMath.PopOutMeters(arcsec, z);
+            double slide = DisparityMath.MotionShiftMeters(-DisparityMath.DefaultIpd / 2, h, z);
+            double half = DisparityMath.ShiftMeters(arcsec, z) / 2;
+            Assert.That(slide, Is.GreaterThan(0), "left eye sees the near point shifted right (crossed)");
+            Assert.That(slide, Is.EqualTo(half).Within(half * 0.01));
+        }
+
+        [Test]
+        public void SlideGrowsWithHeadSwayAndDepthAndIsZeroWithoutEither()
+        {
+            Assert.That(DisparityMath.MotionShiftMeters(0.05, 0, 0.6), Is.EqualTo(0));
+            Assert.That(DisparityMath.MotionShiftMeters(0, 0.02, 0.6), Is.EqualTo(0));
+            double a = Math.Abs(DisparityMath.MotionShiftMeters(0.03, 0.01, 0.6));
+            Assert.That(Math.Abs(DisparityMath.MotionShiftMeters(0.06, 0.01, 0.6)), Is.EqualTo(2 * a).Within(1e-12));
+            Assert.That(Math.Abs(DisparityMath.MotionShiftMeters(0.03, 0.02, 0.6)), Is.GreaterThan(2 * a));
+            Assert.That(double.IsInfinity(DisparityMath.MotionShiftMeters(0.03, 5, 0.6)), Is.False, "depth is clamped in front of the eye");
+        }
+
+        [Test]
+        public void MotionScoreSpeaksMillimetresNotArcseconds()
+        {
+            string line = MotionScore.Describe(480, false, 0.6);
+            StringAssert.Contains("mm step at 60 cm", line);
+            StringAssert.DoesNotContain("″", line);
+        }
+
+        [Test]
+        public void LogRecordsTheCue()
+        {
+            var log = new SessionLog();
+            log.Add(new SessionLog.Trial { SessionId = "s", Phase = "Descent", Cue = SessionLog.Cue.Motion });
+            log.Add(new SessionLog.Summary { SessionId = "s", ThresholdArcsec = double.NaN });
+            StringAssert.Contains("\"cue\":\"Motion\"", log.Lines[0]);
+            StringAssert.Contains("\"cue\":\"Stereo\"", log.Lines[1], "default cue is stereo");
+        }
+    }
 }

@@ -13,7 +13,8 @@ namespace Cyclopea
     ///   left pinky pinch          : flip disparity sign (if creatures sink instead of float)
     ///   right middle-finger pinch : cycle input: ISDK (point or look + pinch) -> raw OVR ray (backup)
     ///                               -> head-gaze dwell (eyes-only)
-    /// Keyboard in the editor: T, E, O, H (input), plus N = next tester id, R = restart.
+    ///   right ring-finger pinch   : cue: stereo <-> motion parallax (the fallback if per-eye rendering fails)
+    /// Keyboard in the editor: T, E, O, H (input), M (cue), plus N = next tester id, R = restart.
     /// Finger switches exist only in development builds; the judge build has none of them.
     /// The left index pinch is never used here; it stays the game's select.
     /// </summary>
@@ -33,7 +34,7 @@ namespace Cyclopea
         // Read lazily: Debug.isDebugBuild may not be touched from a MonoBehaviour field initializer.
         public static bool FingerSwitches { get => fingerSwitches ??= Debug.isDebugBuild; set => fingerSwitches = value; }
 
-        bool lm, lr, lp, rm;
+        bool lm, lr, lp, rm, rr;
 
         void Start() { Apply(); SetMode(Mode, false); }
 
@@ -45,6 +46,7 @@ namespace Cyclopea
                 if (Edge(LeftHand, OVRHand.HandFinger.Ring, ref lr)) CycleEyes();
                 if (Edge(LeftHand, OVRHand.HandFinger.Pinky, ref lp)) FlipSign();
                 if (Edge(RightHand, OVRHand.HandFinger.Middle, ref rm)) ToggleDwell();
+                if (Edge(RightHand, OVRHand.HandFinger.Ring, ref rr)) ToggleCue();
             }
 
             if (FingerSwitches && Time.unscaledTime >= nextRemote) { nextRemote = Time.unscaledTime + 0.5f; PollRemote(); }
@@ -55,6 +57,7 @@ namespace Cyclopea
             if (kb.eKey.wasPressedThisFrame) CycleEyes();
             if (kb.oKey.wasPressedThisFrame) FlipSign();
             if (kb.hKey.wasPressedThisFrame) ToggleDwell();
+            if (kb.mKey.wasPressedThisFrame) ToggleCue();
             if (kb.nKey.wasPressedThisFrame) NextTester();
             if (kb.rKey.wasPressedThisFrame && Session != null) Session.Restart();
         }
@@ -87,6 +90,10 @@ namespace Cyclopea
                     case "sign": StereoPatch.OffsetSign = v.StartsWith("-") ? -1f : 1f; Say("Remote: sign " + StereoPatch.OffsetSign); break;
                     case "mode": if (Enum.TryParse(v, true, out InputMode m)) SetMode(m, true); break;
                     case "restart": if (Session != null) Session.Restart(); break;
+                    case "cue":
+                        if (Session != null && Enum.TryParse(v, true, out SessionLog.Cue cue)) { Session.StartCue(cue); Say("Remote: cue " + cue); }
+                        break;
+                    case "sway": StereoPatch.AutoSway = v == "1"; Say("Remote: auto-sway " + v); break;
                     case "choose": if (Session != null && int.TryParse(v, out int i)) Session.Choose(i, "remote"); break;
                 }
             }
@@ -119,6 +126,15 @@ namespace Cyclopea
         {
             StereoPatch.OffsetSign = -StereoPatch.OffsetSign;
             Say(StereoPatch.OffsetSign > 0 ? "Disparity: crossed (+1)" : "Disparity: uncrossed (-1)");
+        }
+
+        void ToggleCue()
+        {
+            if (Session == null) return;
+            var next = Session.Cue == SessionLog.Cue.Stereo ? SessionLog.Cue.Motion : SessionLog.Cue.Stereo;
+            Session.StartCue(next);
+            Say(next == SessionLog.Cue.Motion ? "Motion mode: sway your head to see depth (one eye is enough)"
+                                              : "Stereo mode: two eyes only");
         }
 
         void ToggleDwell() => SetMode((InputMode)(((int)Mode + 1) % 3), true);

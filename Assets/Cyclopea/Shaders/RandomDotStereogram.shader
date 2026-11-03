@@ -22,6 +22,10 @@ Shader "Cyclopea/RandomDotStereogram"
         _EyeOffset  ("Eye offset (UV)", Float) = 0
         // +1 = crossed (pops toward viewer), -1 = uncrossed. Flip if the device says so.
         _OffsetSign ("Offset sign", Float) = 1
+        // Motion-parallax mode: the creature's dots slide by this much in BOTH eyes as the head moves
+        // (StereoPatch computes it from head position). Zero in stereo mode, so one eye plus head
+        // movement can never find a stereo creature.
+        _CommonShift ("Common shift, both eyes (UV)", Float) = 0
         _MaskCenter ("Mask centre (UV)", Vector) = (0.5, 0.5, 0, 0)
         _MaskRadius ("Mask radius (UV)", Float) = 0.2
         _MaskWobble ("Mask wobble", Float) = 0.15
@@ -62,6 +66,7 @@ Shader "Cyclopea/RandomDotStereogram"
                 float  _Seed;
                 float  _EyeOffset;
                 float  _OffsetSign;
+                float  _CommonShift;
                 float4 _MaskCenter;
                 float  _MaskRadius;
                 float  _MaskWobble;
@@ -170,7 +175,7 @@ Shader "Cyclopea/RandomDotStereogram"
                 // Eye 0 = left, 1 = right. Left samples at -s/2, right at +s/2 => crossed disparity.
                 float eye = (_ForceEye >= 0) ? _ForceEye : (float)unity_StereoEyeIndex;
                 float eyeSign = (eye < 0.5) ? -1.0 : 1.0;
-                float shift = (_Decoy > 0.5) ? 0.0 : eyeSign * _OffsetSign * 0.5 * _EyeOffset;
+                float shift = (_Decoy > 0.5) ? 0.0 : eyeSign * _OffsetSign * 0.5 * _EyeOffset + _CommonShift;
 
                 float outsideCov = coverage(IN.uv, 0.0, false);
                 float insideCov  = coverage(IN.uv, shift, true);

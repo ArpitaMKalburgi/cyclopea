@@ -57,6 +57,7 @@ Tools/
                                        XR Operator per-eye check / upload to the Competition channel
   verify_captures.py                   checks rendered per-eye images: commanded shift, and no one-eye cue
   operator_eyes.py                     same question on the headset, through Meta XR Operator captures
+  verify_motion.py                     motion mode: the creature slides by the commanded amount with head sway; both eyes identical
   reveal.py                            per-eye pair -> anaglyph + "what your two eyes compare" frame (trailer, gallery)
   room-sweep.md, captures-report.md    latest results
   stats.py                             test-retest ICC, one-eye control vs chance, norms comparison
@@ -75,7 +76,8 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Scene wiring | every square is an ISDK ray + gaze target; no missing scripts; all input modes wired |
 | Whole session in the real scene, simulated 60″ observer | completes in 55 trials, Depth Score 83″, log written |
 | Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°) |
-| Random-guessing player | gets the honest "no stereo measured" card, no number |
+| Random-guessing player | gets the honest "no stereo measured" card, no number; the next pinch starts motion mode |
+| Motion mode (head-motion parallax, one eye is enough) | see `Tools/motion-report.md`; in the real scene only the target square slides, and a simulated player finishes with a Motion Depth Score |
 | Dev APK | builds clean, 100 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
 | Judge APK (release) | builds clean, 71 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |
 

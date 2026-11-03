@@ -14,6 +14,8 @@ namespace Cyclopea.Core
     {
         public enum EyeCondition { Both, LeftOnly, RightOnly }
         public enum CatchMode { ReachToDepth, FourAFC }
+        /// <summary>What carries the creature: binocular disparity, or motion parallax from head movement (one eye is enough).</summary>
+        public enum Cue { Stereo, Motion }
 
         public sealed class Trial
         {
@@ -30,6 +32,7 @@ namespace Cyclopea.Core
             public int ReactionMs;
             public bool Decoy;
             public string Phase;              // Descent / Tracking
+            public Cue Cue;
         }
 
         public sealed class Summary
@@ -43,6 +46,7 @@ namespace Cyclopea.Core
             public bool AtFloor;
             public double FloorArcsec;
             public EyeCondition Eyes;
+            public Cue Cue;
         }
 
         readonly List<string> lines = new List<string>();
@@ -63,7 +67,8 @@ namespace Cyclopea.Core
             B("correct", t.Correct) + "," +
             N("rt_ms", t.ReactionMs) + "," +
             B("decoy", t.Decoy) + "," +
-            S("phase", t.Phase) +
+            S("phase", t.Phase) + "," +
+            S("cue", t.Cue.ToString()) +
             "}");
 
         public void Add(Summary s) => lines.Add(
@@ -77,7 +82,8 @@ namespace Cyclopea.Core
             (double.IsNaN(s.ThresholdArcsec) ? "\"threshold_arcsec\":null" : N("threshold_arcsec", s.ThresholdArcsec)) + "," +
             B("at_floor", s.AtFloor) + "," +
             N("floor_arcsec", s.FloorArcsec) + "," +
-            S("eyes", s.Eyes.ToString()) +
+            S("eyes", s.Eyes.ToString()) + "," +
+            S("cue", s.Cue.ToString()) +
             "}");
 
         public string ToJsonLines()

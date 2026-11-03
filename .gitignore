@@ -122,3 +122,4 @@ __pycache__/
 /Tools/perf/
 /Tools/shots/
 /Tools/*.log
+/Tools/captures-motion/
