@@ -59,6 +59,16 @@ namespace Cyclopea.EditorTools
             Debug.Log("[Cyclopea] Setup complete\n" + report);
         }
 
+        /// <summary>Rebuild the scene from code, then build the APK. The usual CLI entry point after code changes.</summary>
+        public static void SceneAndApk()
+        {
+            var r = new StringBuilder();
+            BuildScene(r);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Cyclopea] " + r);
+            BuildApk();
+        }
+
         [MenuItem("Cyclopea/2. Build dev APK")]
         public static void BuildApk()
         {
@@ -281,7 +291,16 @@ namespace Cyclopea.EditorTools
 
             // Scene model (tables, walls).
             var mrukPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Packages/com.meta.xr.mrutilitykit/Core/Tools/MRUK.prefab");
-            if (mrukPrefab != null) PrefabUtility.InstantiatePrefab(mrukPrefab);
+            if (mrukPrefab != null)
+            {
+                // Real scan only. The prefab default falls back to a random sample room, which would put
+                // the static on a table that isn't there; without a scan we use the easel instead.
+                var mruk = (GameObject)PrefabUtility.InstantiatePrefab(mrukPrefab);
+                var comp = mruk.GetComponent<Meta.XR.MRUtilityKit.MRUK>();
+                var kso = new SerializedObject(comp);
+                SetEnum(kso, "SceneSettings.DataSource", "Device");
+                kso.ApplyModifiedPropertiesWithoutUndo();
+            }
 
             // Game.
             var game = new GameObject("Cyclopea");
