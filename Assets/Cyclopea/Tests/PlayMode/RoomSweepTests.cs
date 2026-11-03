@@ -41,6 +41,7 @@ namespace Cyclopea.PlayTests
         public IEnumerator Load()
         {
             LogAssert.ignoreFailingMessages = true;
+            PlayerPrefs.SetInt(SpotSession.NoticeKey, 1);   // these tests start past the first-launch notice
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
                 Scene, new LoadSceneParameters(LoadSceneMode.Single));

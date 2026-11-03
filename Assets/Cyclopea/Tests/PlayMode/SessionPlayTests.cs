@@ -22,6 +22,7 @@ namespace Cyclopea.PlayTests
         {
             // XR is not running in the editor; the rig's OVR components log about it, which is expected.
             LogAssert.ignoreFailingMessages = true;
+            PlayerPrefs.SetInt(SpotSession.NoticeKey, 1);   // these tests start past the first-launch notice
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
                 Scene, new LoadSceneParameters(LoadSceneMode.Single));
@@ -119,6 +120,46 @@ namespace Cyclopea.PlayTests
             Assert.That(s.Cue, Is.EqualTo(SessionLog.Cue.Motion));
             StringAssert.Contains("Sway your head", s.Title.text);
             s.StartCue(SessionLog.Cue.Stereo);
+        }
+
+        [UnityTest]
+        public IEnumerator PauseFreezesTheTrialAndResumes()
+        {
+            var s = Session();
+            s.Restart();
+            Assert.True(s.AwaitingChoice);
+            s.SetPaused(SpotSession.PauseManual, true);
+            s.Choose(s.CurrentTarget, "test");
+            Assert.That(s.TrialsDone, Is.EqualTo(0), "a pinch while paused does nothing");
+            yield return new WaitForSecondsRealtime(0.3f);
+            s.SetPaused(SpotSession.PauseManual, false);
+            s.Choose(s.CurrentTarget, "test");
+            Assert.That(s.TrialsDone, Is.EqualTo(1), "play continues after resume");
+            var trial = File.ReadAllLines(s.LogPath).First(l => l.Contains("\"type\":\"trial\""));
+            int rt = int.Parse(System.Text.RegularExpressions.Regex.Match(trial, "\"rt_ms\":(\\d+)").Groups[1].Value);
+            Assert.That(rt, Is.LessThan(250), "paused time is not counted as reaction time");
+        }
+
+        [UnityTest]
+        public IEnumerator PlayBudgetEndsInARestBreak()
+        {
+            var s = Session();
+            s.CapSeconds = 0.3f;
+            s.BreakSeconds = 0.6f;
+            s.Restart();
+            yield return new WaitForSecondsRealtime(0.5f);
+            for (int f = 0; f < 5; f++) yield return null;
+            s.Choose(s.CurrentTarget, "test");
+            for (int f = 0; f < 5; f++) yield return null;
+            Assert.True(s.OnBreak, "after the budget, the next trial becomes a rest break");
+            StringAssert.Contains("Rest your eyes", s.Title.text);
+            Assert.That(s.Patches.All(p => p.Arcsec == 0 && p.MotionArcsec == 0), "no creature during the break");
+            s.Choose(0, "test");
+            Assert.True(s.OnBreak, "pinching during the break does nothing");
+            yield return new WaitForSecondsRealtime(0.7f);
+            s.Choose(0, "test");
+            Assert.True(s.AwaitingChoice, "after the break, a pinch starts a fresh session");
+            s.CapSeconds = 600f;
         }
 
         [UnityTest]

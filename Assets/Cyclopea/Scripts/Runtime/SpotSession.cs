@@ -14,6 +14,16 @@ namespace Cyclopea
     public sealed class SpotSession : MonoBehaviour
     {
         public const string SubjectKey = "cyc_subject";
+        /// <summary>Set once the first-launch notice has been accepted.</summary>
+        public const string NoticeKey = "cyc_notice_v1";
+
+        /// <summary>First-launch notice. Plain language, and no medical wording anywhere in the app.</summary>
+        public const string NoticeText =
+            "Cyclopea is a game about depth perception.\n" +
+            "It is not a medical device and gives no medical advice.\n" +
+            "If you have a condition that affects your vision,\n" +
+            "ask an eye-care professional before playing.\n" +
+            "Play pauses for a short break after 10 minutes.";
 
         [Header("Scene")]
         public Transform Head;
@@ -32,13 +42,17 @@ namespace Cyclopea
 
         [Header("Timing")]
         public float FeedbackSeconds = 0.75f;
+        [Tooltip("Active play (trials + feedback) before a rest break. Paused time does not count.")]
+        public float CapSeconds = 600f;
+        [Tooltip("Length of the rest break. It keeps counting while the headset is off.")]
+        public float BreakSeconds = 120f;
 
         static readonly Color FrameIdle = new Color(1f, 1f, 1f, 0.18f);
         static readonly Color FrameHover = new Color(1f, 1f, 1f, 0.75f);
         static readonly Color FrameRight = new Color(0.35f, 1f, 0.55f, 1f);
         static readonly Color FrameWrong = new Color(1f, 0.35f, 0.35f, 1f);
 
-        enum State { Trial, Feedback, Done }
+        enum State { Intro, Trial, Feedback, Done, Break }
 
         /// <summary>What a finished session produced; other systems (score anchor, camouflage, platform) listen for it.</summary>
         public struct Result
@@ -82,6 +96,11 @@ namespace Cyclopea
         readonly List<double> distances = new List<double>();
         AudioClip clipRight, clipWrong, clipTick;
         int chosen = -1;
+        float playSeconds, breakUntil, pausedAt, titleCharSize;
+        int pauseFlags;
+
+        // Pause reasons; play resumes only when none is left.
+        public const int PauseFocus = 1, PauseUnmounted = 2, PauseApp = 4, PauseManual = 8;
 
         void Awake()
         {
@@ -94,20 +113,110 @@ namespace Cyclopea
         {
             foreach (var s in Selectors) if (s != null) s.Selected += OnSelected;
             if (Surface != null) Surface.SurfaceChanged += Place;
+            OVRManager.InputFocusLost += OnFocusLost;
+            OVRManager.InputFocusAcquired += OnFocusAcquired;
+            OVRManager.HMDUnmounted += OnUnmounted;
+            OVRManager.HMDMounted += OnMounted;
         }
 
         void OnDisable()
         {
             foreach (var s in Selectors) if (s != null) s.Selected -= OnSelected;
             if (Surface != null) Surface.SurfaceChanged -= Place;
+            OVRManager.InputFocusLost -= OnFocusLost;
+            OVRManager.InputFocusAcquired -= OnFocusAcquired;
+            OVRManager.HMDUnmounted -= OnUnmounted;
+            OVRManager.HMDMounted -= OnMounted;
         }
+
+        // ---------- Pause / resume ----------
+        // System menu, headset off, app backgrounded: the trial freezes (reaction time and the 10-minute
+        // budget stop counting) and picks up exactly where it was.
+
+        void OnFocusLost() => SetPaused(PauseFocus, true);
+        void OnFocusAcquired() => SetPaused(PauseFocus, false);
+        void OnUnmounted() => SetPaused(PauseUnmounted, true);
+        void OnMounted() => SetPaused(PauseUnmounted, false);
+        void OnApplicationPause(bool p) { if (!Application.isEditor) SetPaused(PauseApp, p); }
+
+        public bool Paused => pauseFlags != 0;
+
+        public void SetPaused(int reason, bool on)
+        {
+            bool was = Paused;
+            pauseFlags = on ? pauseFlags | reason : pauseFlags & ~reason;
+            if (was == Paused) return;
+            if (Paused)
+            {
+                pausedAt = Time.time;
+                if (Status != null) Status.text = "Paused";
+            }
+            else
+            {
+                float d = Time.time - pausedAt;
+                trialStart += d;
+                stateUntil += d;
+                if (state == State.Trial || state == State.Feedback) Toast("Welcome back", 1.5f);
+            }
+        }
+
+        // ---------- First-launch notice ----------
+
+        void ShowNotice()
+        {
+            state = State.Intro;
+            ClearPatches();
+            if (Title != null)
+            {
+                Title.characterSize = titleCharSize * 0.7f;
+                Title.text = NoticeText;
+            }
+            Toast("Pinch any square to start", 9999f);
+        }
+
+        // ---------- Rest break ----------
+
+        void EnterBreak()
+        {
+            state = State.Break;
+            breakUntil = Time.time + BreakSeconds;
+            ClearPatches();
+            if (Title != null)
+                Title.text = "That's " + Mathf.RoundToInt(CapSeconds / 60f) + " minutes of play.\nRest your eyes for a moment.";
+        }
+
+        /// <summary>The 10-minute budget ran out mid-session: no score from a cut-short staircase.</summary>
+        void StopForBreak()
+        {
+            log.Add(new SessionLog.Summary
+            {
+                SessionId = sessionId, SubjectId = subjectId, Device = device, UtcStart = utcStart,
+                Trials = trialIndex, ThresholdArcsec = double.NaN, AtFloor = false, FloorArcsec = floorArcsec,
+                Eyes = DevControls.Eyes, Cue = Cue
+            });
+            Flush();
+            lastMeasured = true;
+            EnterBreak();
+        }
+
+        void ClearPatches()
+        {
+            foreach (var p in Patches) if (p != null) { p.Arcsec = 0; p.MotionArcsec = 0; }
+        }
+
+        // Test hooks.
+        public bool OnBreak => state == State.Break;
+        public bool ShowingNotice => state == State.Intro;
+        public int TrialsDone => trialIndex;
 
         void Start()
         {
             for (int i = 0; i < Patches.Length; i++) { Patches[i].Index = i; Patches[i].Head = Head; }
             device = DeviceName(out floorArcsec);
+            if (Title != null) titleCharSize = Title.characterSize;
             Place(Surface != null ? Surface.Current : default);
-            Restart();
+            if (PlayerPrefs.GetInt(NoticeKey, 0) == 1) Restart();
+            else ShowNotice();
         }
 
         // Automation hooks (play-mode tests, XR Operator scripts): read the hidden answer, pick a square.
@@ -143,6 +252,7 @@ namespace Cyclopea
             filePath = Path.Combine(dir, sessionId + ".jsonl");
             Round++;
             RoundStarting?.Invoke(Round);
+            if (Title != null && titleCharSize > 0) Title.characterSize = titleCharSize;
             if (Title != null)
                 Title.text = Cue == SessionLog.Cue.Motion
                     ? "Sway your head gently from side to side.\nOne square's static slides differently. Pinch it."
@@ -177,6 +287,7 @@ namespace Cyclopea
         void NextTrial()
         {
             if (ladder.IsFinished) { Finish(); return; }
+            if (playSeconds >= CapSeconds) { StopForBreak(); return; }
             target = rng.Next(0, Patches.Length);
             for (int i = 0; i < Patches.Length; i++)
             {
@@ -193,6 +304,22 @@ namespace Cyclopea
 
         void OnSelected(StereoPatch p, string method)
         {
+            if (Paused) return;
+            if (state == State.Intro)
+            {
+                PlayerPrefs.SetInt(NoticeKey, 1);
+                PlayerPrefs.Save();
+                Restart();
+                return;
+            }
+            if (state == State.Break)
+            {
+                if (Time.time < breakUntil) return;
+                playSeconds = 0;
+                Restart();
+                return;
+            }
+            if (state == State.Done && playSeconds >= CapSeconds) { EnterBreak(); return; }
             if (state == State.Done)
             {
                 // After the honest "no stereo" card, the next pinch starts the motion version.
@@ -267,6 +394,14 @@ namespace Cyclopea
 
         void Update()
         {
+            if (Paused) return;
+            if (state == State.Trial || state == State.Feedback) playSeconds += Time.deltaTime;
+            if (state == State.Break && Status != null)
+            {
+                float left = breakUntil - Time.time;
+                Status.text = left > 0 ? "Back in " + Mathf.FloorToInt(left / 60f) + ":" + (Mathf.CeilToInt(left) % 60).ToString("00")
+                                       : "Pinch any square to play again";
+            }
             if (state == State.Feedback && Time.time >= stateUntil) NextTrial();
 
             StereoPatch hovered = null;
@@ -286,7 +421,7 @@ namespace Cyclopea
                 Frames[i].startColor = Frames[i].endColor = c;
             }
 
-            if (Status != null && Time.time > toastUntil && state != State.Done)
+            if (Status != null && Time.time > toastUntil && (state == State.Trial || state == State.Feedback))
                 Status.text = state == State.Trial || state == State.Feedback
                     ? $"{subjectId}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
                     : "";

@@ -38,7 +38,8 @@ Assets/Cyclopea/
   Scripts/Runtime/                     one MonoBehaviour per file (Unity only serialises a class whose name matches its file)
     StereoPatch                        one square of static; keeps disparity constant as the head moves
     SurfaceFinder                      MRUK table/wall checked against the room -> Depth API PlaceBox -> easel that finds open space
-    SpotSession                        4-choice Spot rung: staircase, feedback, JSONL log, Depth Score card, rounds
+    SpotSession                        4-choice Spot rung: staircase, feedback, JSONL log, Depth Score card, rounds,
+                                       stereo/motion cue, first-launch notice, pause/resume, 10-minute rest break
     IsdkSelector, IsdkPatchEvents      Interaction SDK hand rays + v207 GazeInteractor (look and pinch)
     HeadGaze, EitherHandPinch          head-pose gaze source and pinch selector for the GazeInteractor
     MicrogestureSelector               thumb-only play (swipe to move, tap to pick)
@@ -52,7 +53,8 @@ Assets/Cyclopea/
     DevControls                        finger switches + adb file remote (dev builds only)
   Editor/CyclopeaSetup.cs              headless setup (incl. ISDK rig via its wizard, XR Operator, Immersive Debugger), scene, APKs, captures
   Tests/Editor/                        40 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice)
-  Tests/PlayMode/                      real scene: wiring (no missing scripts), simulated sessions, 58-room placement sweep
+  Tests/PlayMode/                      real scene: wiring (no missing scripts), simulated sessions, motion mode, notice,
+                                       pause/resume, rest break, placement sweep over every MRUK sample room
 Tools/
   quest.sh                             install / run / log / sessions / stats / remote / Meta VR CLI perf + fov / OVR Metrics /
                                        XR Operator per-eye check / upload to the Competition channel
@@ -78,6 +80,7 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Whole session in the real scene, simulated 60″ observer | completes in 55 trials, Depth Score 83″, log written |
 | Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°); Meta XR Audio room model fits every room |
 | Random-guessing player | gets the honest "no stereo measured" card, no number; the next pinch starts motion mode |
+| Comfort and policy | first launch shows the notice (no medical-claim words, checked) and starts nothing until a pinch; pause freezes the trial and reaction time; 10 minutes of play leads to a rest break |
 | Motion mode (head-motion parallax, one eye is enough) | see `Tools/motion-report.md`; in the real scene only the target square slides, and a simulated player finishes with a Motion Depth Score |
 | Dev APK | builds clean, 100 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
 | Judge APK (release) | builds clean, 73 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |

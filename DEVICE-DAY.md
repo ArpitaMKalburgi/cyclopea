@@ -38,6 +38,7 @@ Checks 1 to 5 matter most.
 
 | # | Check | How | Pass | If it fails |
 |---|---|---|---|---|
+| 0 | First-launch notice | Launch the app | A short notice above the squares ("a game about depth perception… not a medical device…"). Pinch any square to start. It never shows again | — |
 | 1 | Passthrough + static | Look at your desk | Your room, with four squares of white-on-black static on the desk | Black background: tell Claude (passthrough config) |
 | 2 | **Each eye gets its own image** | Pinch left thumb + **middle** finger. Close one eye, then the other | Left eye sees the squares tinted **red**, right eye **blue** | Same colour in both eyes means per-eye rendering is broken. Do check 11 now (motion mode still works then), and tell Claude: the shader fallbacks are ready |
 | 3 | Pop direction | Tint off (middle pinch again). Look at the four squares with both eyes | One square has a blob that floats **toward** you | If it sinks *behind* the surface, pinch left **pinky** to flip it. Note which way was right |
@@ -49,6 +50,7 @@ Checks 1 to 5 matter most.
 | 9 | Round 2 camouflage | Finish round 1, allow the camera prompt, then pinch to play again | The static takes your desk's colours | Denied or unchanged: fine, note it |
 | 10 | Score stays on the desk | After a score, quit the app (`Tools/quest.sh run` again, or the menu) | "Last time … Beat it." card appears where you played | No card: note it (anchors) |
 | 11 | **Motion mode** (the backup game, and the path for players without stereo vision) | Pinch right thumb + **ring**: "Motion mode". Close one eye and sway your head gently left and right | With **one eye**, one square's static slides against the rest while you sway. Hold still and it vanishes. Play it to a Motion Depth Score | Nothing slides: tell Claude. Too subtle: sway more, or turn on Auto-sway in the debugger panel |
+| 12 | Pause and resume | Mid-trial, press the Meta button (system menu), then come back. Or take the headset off for a few seconds | "Paused", then "Welcome back", and the same trial continues | Trial skipped or timer jumped: note it |
 
 Afterwards, pinch left ring again until *Eyes: Both*. Then run `Tools/quest.sh stats` to pull the logs and print the numbers.
 
@@ -90,7 +92,7 @@ Tools/quest.sh fov on       # narrow-FoV check: do the squares and the title sti
 Finger switches and the remote exist only in development builds. The judge build (`Builds/Cyclopea-judge.apk`) has none of them.
 
 ## 6. Send Claude
-1. Pass or fail for checks 1-11 (one word each).
+1. Pass or fail for checks 0-12 (one word each).
 2. Which pop direction was right.
 3. The output of `Tools/quest.sh stats`, and `Tools/device-eyes/report.md` if you ran section 3.
 4. Your Depth Score line.
