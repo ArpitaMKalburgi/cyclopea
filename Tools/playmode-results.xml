@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="3" result="Passed" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-03 07:17:49Z" end-time="2026-11-03 07:17:53Z" duration="3.5697073">
+  <test-suite type="TestSuite" id="1011" name="Cyclopea" fullname="Cyclopea" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-03 07:17:49Z" end-time="2026-11-03 07:17:53Z" duration="3.569707" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1005" name="Cyclopea.PlayTests.dll" fullname="C:/Hackathons/Meta VR Start Developer Competition 2026/cyclopea/Library/ScriptAssemblies/Cyclopea.PlayTests.dll" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-03 07:17:49Z" end-time="2026-11-03 07:17:53Z" duration="3.554516" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="10368" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestSuite" id="1006" name="Cyclopea" fullname="Cyclopea" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-03 07:17:49Z" end-time="2026-11-03 07:17:53Z" duration="3.553220" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1007" name="PlayTests" fullname="Cyclopea.PlayTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-03 07:17:49Z" end-time="2026-11-03 07:17:53Z" duration="3.552571" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1001" name="SessionPlayTests" fullname="Cyclopea.PlayTests.SessionPlayTests" classname="Cyclopea.PlayTests.SessionPlayTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-03 07:17:49Z" end-time="2026-11-03 07:17:53Z" duration="3.550555" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1004" name="ChancePlayerGetsTheHonestCard" fullname="Cyclopea.PlayTests.SessionPlayTests.ChancePlayerGetsTheHonestCard" methodname="ChancePlayerGetsTheHonestCard" classname="Cyclopea.PlayTests.SessionPlayTests" runstate="Runnable" seed="1380991362" result="Passed" start-time="2026-11-03 07:17:49Z" end-time="2026-11-03 07:17:52Z" duration="2.763689" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[
+IgnoreFailingMessages:true
+Found IOVRSkeletonDataProvider reference in RightHand due to unassigned field.
+Found IOVRSkeletonDataProvider reference in LeftHand due to unassigned field.
+MRUK Shared: Anchor state is null, can't get world lock offset
+Unable to process a controller whose SampleRateHz is 0 now.
+Unable to process a controller whose SampleRateHz is 0 now.
+]]></output>
+            </test-case>
+            <test-case id="1002" name="SceneIsWired" fullname="Cyclopea.PlayTests.SessionPlayTests.SceneIsWired" methodname="SceneIsWired" classname="Cyclopea.PlayTests.SessionPlayTests" runstate="Runnable" seed="1567847059" result="Passed" start-time="2026-11-03 07:17:52Z" end-time="2026-11-03 07:17:52Z" duration="0.325792" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[
+IgnoreFailingMessages:true
+[OVRManager] OnDestroy
+MRUK Shared: Configure trackers: 0
+MRUK Shared: Clear rooms
+Found IOVRSkeletonDataProvider reference in LeftHand due to unassigned field.
+Found IOVRSkeletonDataProvider reference in RightHand due to unassigned field.
+]]></output>
+            </test-case>
+            <test-case id="1003" name="SimulatedObserverCompletesSessionAndIsLogged" fullname="Cyclopea.PlayTests.SessionPlayTests.SimulatedObserverCompletesSessionAndIsLogged" methodname="SimulatedObserverCompletesSessionAndIsLogged" classname="Cyclopea.PlayTests.SessionPlayTests" runstate="Runnable" seed="1407373346" result="Passed" start-time="2026-11-03 07:17:52Z" end-time="2026-11-03 07:17:53Z" duration="0.440603" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[
+IgnoreFailingMessages:true
+[OVRManager] OnDestroy
+MRUK Shared: Configure trackers: 0
+MRUK Shared: Clear rooms
+Found IOVRSkeletonDataProvider reference in LeftHand due to unassigned field.
+Found IOVRSkeletonDataProvider reference in RightHand due to unassigned field.
+[Cyclopea test] Depth Score Spot: 83″ — a 2.3 mm step at 60 cm | {"type":"summary","session":"20261103-071753-8006","subject":"P01","device":"Editor / 960XGL (SAMSUNG ELECTRONICS CO., LTD.)","utc":"2026-11-03T07:17:53.2848804Z","trials":55,"threshold_arcsec":82.534317063980012,"at_floor":false,"floor_arcsec":15,"eyes":"Both"}
+Saving results to: C:/Users/ujwal/AppData/LocalLow/Ujwal240/Cyclopea\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

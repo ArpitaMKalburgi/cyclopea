@@ -30,9 +30,11 @@ namespace Cyclopea
         public Surface Current { get; private set; }
         public bool SceneLoaded { get; private set; }
 
+        // Valid before any other Start() reads it; refined once the head is tracked.
+        void Awake() => Current = Easel();
+
         void Start()
         {
-            Current = Easel();
             if (UseSceneModel && MRUK.Instance != null)
                 MRUK.Instance.RegisterSceneLoadedCallback(OnSceneLoaded);
             // The head pose is not tracked on the first frame; place again once it is.

@@ -79,6 +79,17 @@ namespace Cyclopea
             Restart();
         }
 
+        // Automation hooks (play-mode tests, XR Operator scripts): read the hidden answer, pick a square.
+        public int CurrentTarget => target;
+        public bool IsDone => state == State.Done;
+        public bool AwaitingChoice => state == State.Trial;
+        public double CurrentArcsec => ladder.CurrentArcsec;
+        public string LogPath => filePath;
+        public void Choose(int index, string method = "script")
+        {
+            if (index >= 0 && index < Patches.Length) OnSelected(Patches[index], method);
+        }
+
         public void Restart()
         {
             sessionId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + rng.Next(1000, 9999);
