@@ -17,8 +17,7 @@ Everything else is built and checked offline:
    - Skip this once, deliberately, on a later run. Without a scan, the game finds the desk with depth sensing instead, which is what a judge without a scan gets.
 5. Connect a USB-C cable to the PC. In the headset, accept **Allow USB debugging** and tick *Always allow from this computer*.
 6. On the PC (optional, but it unlocks the agent checks below):
-   - In PowerShell: `iwr -useb https://developers.meta.com/horizon/install-cli/windows/ | iex` (installs the Meta VR CLI).
-   - In Claude Code: `/plugin marketplace add meta-quest/agentic-tools`, then `/plugin install meta-vr@meta-vr`.
+   - Already done (Nov 4): the Meta VR CLI (`metavr` 1.10.0, from npm `@meta-quest/metavr`) and Meta's Claude Code plugin `meta-vr` 2.0.0 (36 skills and the metavr MCP server). Restart Claude Code once so the plugin loads. `metavr device list` should show the headset.
    - In the headset's Store: install **OVR Metrics Tool**.
 
 ## 1. Install and launch (2 min)
