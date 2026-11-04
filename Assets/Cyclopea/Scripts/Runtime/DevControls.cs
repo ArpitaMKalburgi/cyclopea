@@ -65,6 +65,7 @@ namespace Cyclopea
         // ---------- Remote control for agents (development builds only) ----------
         // Tools/quest.sh push-remote writes <persistentDataPath>/remote.txt over adb; each line is key=value:
         //   tint=1|0  eyes=Both|LeftOnly|RightOnly  sign=1|-1  mode=Isdk|RawRay|Dwell  restart=1  choose=0..3
+        //   tutorial=1  cue=Stereo|Motion  sway=1|0  rung=Sort|Catch|all  rungs=1|0
         // The file is deleted once applied. Lets an agent (Meta VR CLI / XR Operator over MCP) drive the
         // device checks without injecting finger pinches.
         float nextRemote;
@@ -96,6 +97,12 @@ namespace Cyclopea
                         break;
                     case "sway": StereoPatch.AutoSway = v == "1"; Say("Remote: auto-sway " + v); break;
                     case "choose": if (Session != null && int.TryParse(v, out int i)) Session.Choose(i, "remote"); break;
+                    case "rung":   // rung=sort / rung=catch: that rung alone, as practice; rung=all: the whole ladder
+                        if (Session == null) break;
+                        if (Enum.TryParse(v, true, out SkillLadder.Rung r)) { Session.StartAtRung(r); Say("Remote: rung " + r); }
+                        else { Session.StartAllRungs(); Say("Remote: all rungs"); }
+                        break;
+                    case "rungs": if (Session != null) { Session.LadderRungs = v != "0"; Say("Remote: Sort and Catch " + (Session.LadderRungs ? "on" : "off")); } break;
                 }
             }
         }

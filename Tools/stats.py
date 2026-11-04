@@ -18,6 +18,7 @@ import csv
 import glob
 import json
 import math
+import statistics
 import sys
 from collections import defaultdict
 
@@ -73,6 +74,12 @@ def main():
     motion_summaries = [s for s in summaries if s.get("cue") == "Motion"]
     trials = [t for t in trials if t.get("cue", "Stereo") == "Stereo"]
     summaries = [s for s in summaries if s.get("cue", "Stereo") == "Stereo"]
+    # Sort and Catch are game rungs after Spot; the Depth Score and every number below is Spot's.
+    # Logs from before the rung field are Spot only.
+    rung_summaries = [s for s in summaries if s.get("rung", "Spot") != "Spot"]
+    rung_trials = [t for t in trials if t.get("rung", "Spot") != "Spot"]
+    trials = [t for t in trials if t.get("rung", "Spot") == "Spot"]
+    summaries = [s for s in summaries if s.get("rung", "Spot") == "Spot"]
 
     print("## Cyclopea — measured numbers\n")
     if motion_summaries:
@@ -124,6 +131,23 @@ def main():
             t = 10 ** logs[-1]
             pct = next((p for p, arc in norms if arc >= t), 100.0)
             print(f"| {subj[:8]} | {t:.0f} | ~{pct:.0f}th |")
+        print()
+
+    # 4. Game rungs, reported apart from the Depth Score.
+    if rung_summaries or rung_trials:
+        print("### 4. Sort and Catch (game rungs, not part of the Depth Score)")
+        sort = sorted(s["threshold_arcsec"] for s in rung_summaries
+                      if s.get("rung") == "Sort" and s.get("threshold_arcsec") is not None)
+        if sort:
+            print(f"Sort (pinch the nearer of two): {len(sort)} sessions, median {statistics.median(sort):.0f}″ apart.")
+        catch = [t for t in rung_trials if t.get("rung") == "Catch"]
+        if catch:
+            caught = sum(1 for t in catch if t["correct"])
+            errs = sorted(abs(t["depth_err_m"]) * 1000 for t in catch if t.get("depth_err_m") is not None)
+            line = f"Catch (touch it with a fingertip): {caught} of {len(catch)} caught"
+            if errs:
+                line += f"; on the right square the fingertip was a median {statistics.median(errs):.0f} mm from the creature's height"
+            print(line + ".")
         print()
 
 

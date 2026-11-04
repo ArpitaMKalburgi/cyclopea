@@ -13,7 +13,7 @@ namespace Cyclopea.Core
     public sealed class SessionLog
     {
         public enum EyeCondition { Both, LeftOnly, RightOnly }
-        public enum CatchMode { ReachToDepth, FourAFC }
+        public enum CatchMode { ReachToDepth, FourAFC, TwoAFC }
         /// <summary>What carries the creature: binocular disparity, or motion parallax from head movement (one eye is enough).</summary>
         public enum Cue { Stereo, Motion }
 
@@ -33,6 +33,9 @@ namespace Cyclopea.Core
             public bool Decoy;
             public string Phase;              // Descent / Tracking
             public Cue Cue;
+            public string Rung = "Spot";      // Spot / Sort / Catch (SkillLadder.Rung)
+            public double HeightM = double.NaN;      // Catch: how high the creature was held above the surface
+            public double DepthErrorM = double.NaN;  // Catch: fingertip height minus that (NaN when the square was wrong)
         }
 
         public sealed class Summary
@@ -47,6 +50,7 @@ namespace Cyclopea.Core
             public double FloorArcsec;
             public EyeCondition Eyes;
             public Cue Cue;
+            public string Rung = "Spot";
         }
 
         readonly List<string> lines = new List<string>();
@@ -68,7 +72,10 @@ namespace Cyclopea.Core
             N("rt_ms", t.ReactionMs) + "," +
             B("decoy", t.Decoy) + "," +
             S("phase", t.Phase) + "," +
-            S("cue", t.Cue.ToString()) +
+            S("cue", t.Cue.ToString()) + "," +
+            S("rung", t.Rung) +
+            (double.IsNaN(t.HeightM) ? "" : "," + N("height_m", t.HeightM)) +
+            (double.IsNaN(t.DepthErrorM) ? "" : "," + N("depth_err_m", t.DepthErrorM)) +
             "}");
 
         public void Add(Summary s) => lines.Add(
@@ -83,7 +90,8 @@ namespace Cyclopea.Core
             B("at_floor", s.AtFloor) + "," +
             N("floor_arcsec", s.FloorArcsec) + "," +
             S("eyes", s.Eyes.ToString()) + "," +
-            S("cue", s.Cue.ToString()) +
+            S("cue", s.Cue.ToString()) + "," +
+            S("rung", s.Rung) +
             "}");
 
         public string ToJsonLines()

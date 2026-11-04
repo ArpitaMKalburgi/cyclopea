@@ -42,6 +42,12 @@ namespace Cyclopea
         public static bool AutoSway;
         public static float SwayAmplitudeM = 0.03f, SwayHz = 0.5f;
 
+        /// <summary>
+        /// Distance between the eyes (metres) for the held-height geometry of the Catch rung. SpotSession
+        /// keeps it at the rig's eye-anchor separation when the runtime reports one.
+        /// </summary>
+        public static double Ipd = DisparityMath.DefaultIpd;
+
         // Dot geometry in metres on the surface: ~3 mm dots on a ~6 mm grid read as fine static at 60 cm.
         public static float CellSizeM = 0.006f;
         public static float DotRadiusM = 0.0016f;
@@ -51,6 +57,9 @@ namespace Cyclopea
         [Tooltip("Motion mode: the creature sits at the depth this many arcseconds of disparity would give, " +
                  "shown only through head-motion parallax (identical in both eyes). 0 = off.")]
         public double MotionArcsec;
+        [Tooltip("Catch rung: hold the creature at this physical height above the surface (metres) however " +
+                 "the head moves, like a real object, so a real fingertip can touch it. 0 = present Arcsec.")]
+        public double HoldHeightM;
         public bool Decoy;
         public float Seed;
         public Vector2 MaskCenter = new Vector2(0.5f, 0.5f);
@@ -62,6 +71,17 @@ namespace Cyclopea
         public Transform Head;
         public double LastViewingDistance { get; private set; } = 0.6;
         public float LastCommonShiftUV { get; private set; }
+        /// <summary>Height of the eyes above this square's plane (metres), from the last frame.</summary>
+        public double LastEyeHeight { get; private set; } = 0.45;
+        /// <summary>Surface shift between the eyes (metres) presented on the last frame.</summary>
+        public double LastShiftM { get; private set; }
+
+        /// <summary>The shift that shows the creature: held height if set, otherwise Arcsec at the current distance.</summary>
+        public double ShiftNow()
+        {
+            if (HoldHeightM > 0 && Head != null) return Reach.ShiftForHeight(HoldHeightM, LastEyeHeight, Ipd);
+            return DisparityMath.ShiftMeters(Arcsec, LastViewingDistance);
+        }
 
         MeshRenderer meshRenderer;
         MaterialPropertyBlock block;
@@ -102,10 +122,14 @@ namespace Cyclopea
         {
             float width = Mathf.Max(0.01f, transform.lossyScale.x);
             if (Head != null)
+            {
                 LastViewingDistance = Mathf.Max(0.15f, Vector3.Distance(Head.position, transform.position));
+                LastEyeHeight = Mathf.Max(0.1f, Vector3.Dot(Head.position - transform.position, -transform.forward));
+            }
+            LastShiftM = ShiftNow();
 
             meshRenderer.GetPropertyBlock(block);
-            block.SetFloat(EyeOffsetId, DisparityMath.EyeOffsetUV(Arcsec, LastViewingDistance, width));
+            block.SetFloat(EyeOffsetId, (float)(LastShiftM / width));
             block.SetFloat(OffsetSignId, OffsetSign);
             block.SetFloat(SeedId, Seed);
             block.SetFloat(CellSizeId, CellSizeM / width);

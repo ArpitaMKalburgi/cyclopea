@@ -103,6 +103,19 @@ namespace Cyclopea.Core
                 index++;
         }
 
+        /// <summary>
+        /// Turns a rung off (or back on), e.g. Catch for a player with no tracked hands. Turning off the
+        /// current rung moves the ladder on to the next one that can run.
+        /// </summary>
+        public void SetEnabled(Rung rung, bool on)
+        {
+            foreach (var r in rungs) if (r.Rung == rung) r.Enabled = on;
+            while (!IsFinished && (stairs[CurrentRung].IsFinished || !rungs[index].Enabled))
+                index++;
+        }
+
+        public bool Has(Rung rung) => rungs.Exists(r => r.Rung == rung && r.Enabled);
+
         public Profile BuildProfile()
         {
             var p = new Profile { StereoMeasured = spotMissesAtCeiling < CeilingMissesForNoStereo };

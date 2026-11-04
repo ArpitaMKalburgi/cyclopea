@@ -7,9 +7,10 @@ using UnityEngine;
 namespace Cyclopea
 {
     /// <summary>
-    /// The Spot rung end to end: four squares of static on the surface, one hides a creature carried
-    /// only by disparity, the player picks it, the staircase tightens the camouflage, every trial is
-    /// logged to JSONL, and the session ends with an honest Depth Score card.
+    /// A session end to end: four squares of static on the surface, creatures carried only by disparity,
+    /// a staircase per rung tightening the camouflage, every trial logged to JSONL, and an honest Depth
+    /// Score card at the end. Rungs (SkillLadder): Spot (pinch the square a creature hides in), then Sort
+    /// (two creatures: pinch the nearer) and Catch (touch one with a real fingertip at the height it floats).
     /// </summary>
     public sealed class SpotSession : MonoBehaviour
     {
@@ -53,13 +54,29 @@ namespace Cyclopea
         public float BreakSeconds = 120f;
         [Tooltip("Tutorial: how long the found creature is celebrated before round 1 begins.")]
         public float TutorialRewardSeconds = 2.6f;
+        [Tooltip("Title card that introduces Sort or Catch.")]
+        public float RungIntroSeconds = 2.5f;
+        [Tooltip("Catch: time to watch the caught creature climb on before the next one hides.")]
+        public float CatchFeedbackSeconds = 1.4f;
+
+        [Header("Ladder")]
+        [Tooltip("After Spot: Sort (pinch the nearer of two creatures) and Catch (touch one with a fingertip). Stereo only.")]
+        public bool LadderRungs = true;
+        [Tooltip("Sort runs only when Spot reached this fine a level, so both creatures are easy to see.")]
+        public double SortGateArcsec = 480;
+        [Tooltip("Sort: the farther creature floats at a random disparity in this range (arcseconds).")]
+        public double SortBaseMin = 480, SortBaseMax = 720;
+        [Tooltip("Catch is skipped when no tracked fingertip shows up for this long (hands-free players).")]
+        public float CatchHandWaitSeconds = 8f;
+        [Tooltip("Catch: the fingertip must move this far after a catch before it can catch again (metres).")]
+        public float CatchRearmM = 0.04f;
 
         static readonly Color FrameIdle = new Color(1f, 1f, 1f, 0.18f);
         static readonly Color FrameHover = new Color(1f, 1f, 1f, 0.75f);
         static readonly Color FrameRight = new Color(0.35f, 1f, 0.55f, 1f);
         static readonly Color FrameWrong = new Color(1f, 0.35f, 0.35f, 1f);
 
-        enum State { Intro, Tutorial, Trial, Feedback, Done, Break }
+        enum State { Intro, Tutorial, Trial, Feedback, Done, Break, RungIntro }
 
         /// <summary>What a finished session produced; other systems (score anchor, camouflage, platform) listen for it.</summary>
         public struct Result
@@ -69,6 +86,8 @@ namespace Cyclopea
             public double ThresholdArcsec, ViewingDistanceM;
             public string ScoreLine;
             public SessionLog.Cue Cue;
+            /// <summary>Sort and Catch results, one line ("" when only Spot ran).</summary>
+            public string ProfileLine;
         }
 
         /// <summary>
@@ -83,6 +102,14 @@ namespace Cyclopea
         public void StartCue(SessionLog.Cue cue)
         {
             Cue = cue;
+            onlyRung = null;
+            Restart();
+        }
+
+        /// <summary>Back to the whole ladder after a one-rung practice session.</summary>
+        public void StartAllRungs()
+        {
+            onlyRung = null;
             Restart();
         }
 
@@ -106,6 +133,19 @@ namespace Cyclopea
         float playSeconds, breakUntil, pausedAt, titleCharSize;
         int pauseFlags;
         bool tutorialHidden, tutorialFound;
+
+        // Ladder state.
+        SkillLadder.Rung rung;
+        SkillLadder.Rung? onlyRung;
+        int sortOther = -1;
+        double sortBase, catchHeight;
+        readonly StillDetector still = new StillDetector();
+        int catchOver = -1, catchTrials, catchHits;
+        float rungStart;
+        bool tipSeen, catchArmed, lastCorrect;
+        Vector3 lastCatchAt;
+        readonly List<double> catchErrors = new List<double>();
+        OVRCameraRig rig;
 
         // Pause reasons; play resumes only when none is left.
         public const int PauseFocus = 1, PauseUnmounted = 2, PauseApp = 4, PauseManual = 8;
@@ -230,6 +270,7 @@ namespace Cyclopea
                 float d = Time.time - pausedAt;
                 trialStart += d;
                 stateUntil += d;
+                rungStart += d;
                 if (state == State.Trial || state == State.Feedback) Toast("Welcome back", 1.5f);
             }
         }
@@ -266,7 +307,7 @@ namespace Cyclopea
             {
                 SessionId = sessionId, SubjectId = subjectId, Device = device, UtcStart = utcStart,
                 Trials = trialIndex, ThresholdArcsec = double.NaN, AtFloor = false, FloorArcsec = floorArcsec,
-                Eyes = DevControls.Eyes, Cue = Cue
+                Eyes = DevControls.Eyes, Cue = Cue, Rung = rung.ToString()
             });
             Flush();
             lastMeasured = true;
@@ -275,7 +316,7 @@ namespace Cyclopea
 
         void ClearPatches()
         {
-            foreach (var p in Patches) if (p != null) { p.Arcsec = 0; p.MotionArcsec = 0; }
+            foreach (var p in Patches) if (p != null) { p.Arcsec = 0; p.MotionArcsec = 0; p.HoldHeightM = 0; }
         }
 
         // Test hooks.
@@ -287,6 +328,8 @@ namespace Cyclopea
         {
             for (int i = 0; i < Patches.Length; i++) { Patches[i].Index = i; Patches[i].Head = Head; }
             device = DeviceName(out floorArcsec);
+            rig = FindFirstObjectByType<OVRCameraRig>();
+            UpdateIpd();
             if (Title != null) titleCharSize = Title.characterSize;
             Place(Surface != null ? Surface.Current : default);
             if (PlayerPrefs.GetInt(NoticeKey, 0) != 1) ShowNotice();
@@ -299,6 +342,31 @@ namespace Cyclopea
         public bool IsDone => state == State.Done;
         public bool AwaitingChoice => state == State.Trial;
         public double CurrentArcsec => ladder.CurrentArcsec;
+        public SkillLadder.Rung CurrentRung => rung;
+        public bool IntroducingRung => state == State.RungIntro;
+        /// <summary>Sort: the farther creature's square (CurrentTarget is the nearer one). -1 otherwise.</summary>
+        public int SortOther => sortOther;
+        /// <summary>Catch: how high the creature is held above the surface (metres).</summary>
+        public double CatchHeightM => catchHeight;
+        public float CatchHoldProgress => (float)still.Progress;
+
+        /// <summary>
+        /// Catch with the fingertip over square <paramref name="index"/> at <paramref name="heightM"/> above the
+        /// surface (automation and tests; a real hand goes through the same judgement in Update).
+        /// </summary>
+        public void CatchAt(int index, double heightM, string method = "script")
+        {
+            if (Paused || state != State.Trial || rung != SkillLadder.Rung.Catch) return;
+            JudgeCatch(index, heightM, method);
+        }
+
+        /// <summary>A session of just one rung (dev remote "rung=sort|catch", tests): practise or check it alone.</summary>
+        public void StartAtRung(SkillLadder.Rung only)
+        {
+            Cue = SessionLog.Cue.Stereo;
+            onlyRung = only;
+            Restart();
+        }
         public string LogPath => filePath;
         public void Choose(int index, string method = "script")
         {
@@ -310,14 +378,14 @@ namespace Cyclopea
             sessionId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + rng.Next(1000, 9999);
             subjectId = "P" + PlayerPrefs.GetInt(SubjectKey, 1).ToString("00");
             utcStart = DateTime.UtcNow;
-            ladder = new SkillLadder(floorArcsec, new[]
-            {
-                new SkillLadder.RungConfig
-                {
-                    Rung = SkillLadder.Rung.Spot, Alternatives = 4,
-                    Stair = new Staircase.Config { StartArcsec = 1920, FloorArcsec = floorArcsec }
-                }
-            });
+            var rungs = new List<SkillLadder.RungConfig>(Rungs());
+            if (onlyRung.HasValue) rungs.RemoveAll(r => r.Rung != onlyRung.Value);
+            ladder = new SkillLadder(floorArcsec, rungs);
+            rung = SkillLadder.Rung.Spot;   // a different first rung (StartAtRung) gets its intro card
+            sortOther = -1;
+            catchTrials = catchHits = 0;
+            catchErrors.Clear();
+            catchHeight = 0;
             log = new SessionLog();
             logged = 0;
             trialIndex = 0;
@@ -360,18 +428,123 @@ namespace Cyclopea
                     Quaternion.LookRotation(s.Center - Head.position, Vector3.up));
         }
 
+        /// <summary>
+        /// The ladder for a session. Spot measures; Sort and Catch follow in stereo mode. Sort is short
+        /// (8 reversals) and Catch shorter (it stops at 480", about as fine as hand tracking resolves).
+        /// </summary>
+        IEnumerable<SkillLadder.RungConfig> Rungs()
+        {
+            yield return new SkillLadder.RungConfig
+            {
+                Rung = SkillLadder.Rung.Spot, Alternatives = 4,
+                Stair = new Staircase.Config { StartArcsec = 1920, FloorArcsec = floorArcsec }
+            };
+            if (Cue != SessionLog.Cue.Stereo || (!LadderRungs && !onlyRung.HasValue)) yield break;
+            yield return new SkillLadder.RungConfig
+            {
+                Rung = SkillLadder.Rung.Sort, Alternatives = 2,
+                Stair = new Staircase.Config
+                {
+                    StartArcsec = 720, CeilingArcsec = 1440, FloorArcsec = floorArcsec * 2, DownRule = 3,
+                    ReversalsToStop = 8, ReversalsForThreshold = 6, FloorTrialsToStop = 8, MaxTrials = 60
+                }
+            };
+            yield return new SkillLadder.RungConfig
+            {
+                Rung = SkillLadder.Rung.Catch, Alternatives = 1,
+                Stair = new Staircase.Config
+                {
+                    StartArcsec = 1920, CeilingArcsec = 1920, FloorArcsec = 480,
+                    ReversalsToStop = 4, ReversalsForThreshold = 4, FloorTrialsToStop = 4, MaxTrials = 12
+                }
+            };
+        }
+
         void NextTrial()
         {
-            if (ladder.IsFinished) { Finish(); return; }
-            if (playSeconds >= CapSeconds) { StopForBreak(); return; }
-            target = rng.Next(0, Patches.Length);
-            for (int i = 0; i < Patches.Length; i++)
+            if (playSeconds >= CapSeconds && !ladder.IsFinished) { StopForBreak(); return; }
+            // A new rung: check it can run here, then introduce it with a short title card.
+            while (!ladder.IsFinished && ladder.CurrentRung != rung)
             {
-                Patches[i].Reshuffle(rng);
-                double lv = i == target ? ladder.CurrentArcsec : 0.0;
-                Patches[i].Arcsec = Cue == SessionLog.Cue.Stereo ? lv : 0.0;
-                Patches[i].MotionArcsec = Cue == SessionLog.Cue.Motion ? lv : 0.0;
-                Patches[i].Decoy = false;
+                var next = ladder.CurrentRung;
+                if (CanRun(next)) { IntroduceRung(next); return; }
+                ladder.SetEnabled(next, false);
+            }
+            if (ladder.IsFinished) { Finish(); return; }
+            StartTrial();
+        }
+
+        bool CanRun(SkillLadder.Rung r)
+        {
+            switch (r)
+            {
+                case SkillLadder.Rung.Sort:
+                    // Both creatures must be easy to see: only after a fine enough Spot (or on its own, as practice).
+                    if (onlyRung.HasValue) return true;
+                    var prof = ladder.BuildProfile();
+                    return prof.StereoMeasured && prof.ThresholdArcsec.TryGetValue(SkillLadder.Rung.Spot, out double thr) &&
+                           thr <= SortGateArcsec;
+                case SkillLadder.Rung.Catch:
+                    return Tips != null;
+                default:
+                    return true;
+            }
+        }
+
+        FingerTips Tips => Creatures != null ? Creatures.Tips : null;
+
+        void IntroduceRung(SkillLadder.Rung r)
+        {
+            rung = r;
+            state = State.RungIntro;
+            ClearPatches();
+            stateUntil = Time.time + RungIntroSeconds;
+            if (Title != null)
+            {
+                if (titleCharSize > 0) Title.characterSize = titleCharSize;
+                Title.text = r == SkillLadder.Rung.Sort ? "Two creatures now.\nPinch the one floating nearer to you."
+                           : r == SkillLadder.Rung.Catch ? "Now catch one.\nTouch its back with a fingertip and hold still."
+                           : "Pinch the square a creature hides in.";
+            }
+            rungStart = Time.time + RungIntroSeconds;
+            tipSeen = false;
+            catchArmed = true;
+        }
+
+        void StartTrial()
+        {
+            target = rng.Next(0, Patches.Length);
+            sortOther = -1;
+            double lv = ladder.CurrentArcsec;
+            foreach (var p in Patches)
+            {
+                p.Reshuffle(rng);
+                p.Arcsec = 0; p.MotionArcsec = 0; p.HoldHeightM = 0; p.Decoy = false;
+            }
+            switch (rung)
+            {
+                case SkillLadder.Rung.Sort:
+                    // Two creatures; the nearer one floats lv arcseconds in front of the farther one.
+                    sortOther = (target + 1 + rng.Next(0, Patches.Length - 1)) % Patches.Length;
+                    sortBase = SortBaseMin + rng.NextDouble() * (SortBaseMax - SortBaseMin);
+                    Patches[target].Arcsec = sortBase + lv;
+                    Patches[sortOther].Arcsec = sortBase;
+                    break;
+                case SkillLadder.Rung.Catch:
+                {
+                    // Held at a fixed height, like a real object, so leaning in to reach does not move it.
+                    var p = Patches[target];
+                    catchHeight = Math.Min(0.10, Math.Max(0.008, DisparityMath.PopOutMeters(lv, p.LastViewingDistance, StereoPatch.Ipd)));
+                    p.Arcsec = lv;
+                    p.HoldHeightM = catchHeight;
+                    still.Reset();
+                    catchOver = -1;
+                    break;
+                }
+                default:
+                    if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = lv;
+                    else Patches[target].MotionArcsec = lv;
+                    break;
             }
             chosen = -1;
             trialStart = Time.time;
@@ -402,10 +575,17 @@ namespace Cyclopea
             {
                 // After the honest "no stereo" card, the next pinch starts the motion version.
                 if (Cue == SessionLog.Cue.Stereo && !lastMeasured) StartCue(SessionLog.Cue.Motion);
-                else Restart();
+                else StartAllRungs();
                 return;
             }
             if (state != State.Trial || p == null) return;
+            if (rung == SkillLadder.Rung.Catch) return;   // caught with a fingertip, not a pinch
+            bool sort = rung == SkillLadder.Rung.Sort;
+            if (sort && p.Index != target && p.Index != sortOther)
+            {
+                Toast("Pick one of the two creatures.", 1.5f);
+                return;
+            }
 
             bool correct = p.Index == target;
             double level = ladder.CurrentArcsec;
@@ -417,14 +597,32 @@ namespace Cyclopea
             {
                 SessionId = sessionId, SubjectId = subjectId, Device = device, UtcTime = DateTime.UtcNow,
                 Index = trialIndex++, LevelArcsec = level, ViewingDistanceM = z,
-                Mode = SessionLog.CatchMode.FourAFC, Eyes = DevControls.Eyes, Correct = correct,
-                ReactionMs = (int)((Time.time - trialStart) * 1000), Decoy = false, Phase = phase, Cue = Cue
+                Mode = sort ? SessionLog.CatchMode.TwoAFC : SessionLog.CatchMode.FourAFC, Eyes = DevControls.Eyes,
+                Correct = correct, ReactionMs = (int)((Time.time - trialStart) * 1000), Decoy = false, Phase = phase,
+                Cue = Cue, Rung = rung.ToString()
             });
             Flush();
             ladder.Respond(correct);
+            lastCorrect = correct;
+            chosen = p.Index;
+
+            if (sort)
+            {
+                // The nearer one stands out clearly. Found, it comes out; the farther one peeks too.
+                double shown = sortBase + Math.Max(level, 960);
+                Patches[target].Arcsec = shown;
+                PlayAtCreature(correct ? clipRight : clipWrong, Patches[target], shown);
+                if (Creatures != null)
+                {
+                    Creatures.Reveal(Patches[target], level, shown, correct);
+                    Creatures.Reveal(Patches[sortOther], level, sortBase, false, collect: false);
+                }
+                state = State.Feedback;
+                stateUntil = Time.time + FeedbackSeconds;
+                return;
+            }
 
             // Feedback: show where it was, clearly, so the player learns what to look for.
-            chosen = p.Index;
             if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = Math.Max(level, 1920);
             else Patches[target].MotionArcsec = Math.Max(level, 1920);
             PlayAtCreature(correct ? clipRight : clipWrong, Patches[target], Math.Max(level, 1920));
@@ -435,51 +633,217 @@ namespace Cyclopea
             stateUntil = Time.time + FeedbackSeconds;
         }
 
+        // ---------- Catch ----------
+        // One creature is held at a fixed height above a square. The player touches its back with a real
+        // fingertip and holds still; the touch is judged by the fingertip's height against the creature's.
+
+        void JudgeCatch(int over, double heightM, string method)
+        {
+            var outcome = Reach.Judge(over == target, heightM, catchHeight);
+            bool correct = outcome == Reach.Outcome.Caught;
+            double level = ladder.CurrentArcsec;
+            double z = Mean(q => q.LastViewingDistance);
+            distances.Add(z);
+            log.Add(new SessionLog.Trial
+            {
+                SessionId = sessionId, SubjectId = subjectId, Device = device, UtcTime = DateTime.UtcNow,
+                Index = trialIndex++, LevelArcsec = level, ViewingDistanceM = z,
+                Mode = SessionLog.CatchMode.ReachToDepth, Eyes = DevControls.Eyes, Correct = correct,
+                ReactionMs = (int)((Time.time - trialStart) * 1000), Decoy = false,
+                Phase = ladder.CurrentStaircase.CurrentPhase.ToString(), Cue = Cue, Rung = rung.ToString(),
+                HeightM = catchHeight, DepthErrorM = over == target ? heightM - catchHeight : double.NaN
+            });
+            Flush();
+            ladder.Respond(correct);
+            catchTrials++;
+            if (correct) catchHits++;
+            if (over == target) catchErrors.Add(Math.Abs(heightM - catchHeight));
+            lastCorrect = correct;
+            chosen = over;
+
+            // Caught: it comes out right under the fingertip and climbs on. Missed: it peeks out at the
+            // height it really floated, and the toast says which way.
+            var p = Patches[target];
+            PlayAtCreature(correct ? clipRight : clipWrong, p, level);
+            if (Creatures != null) Creatures.Reveal(p, level, level, correct, true, catchHeight);
+            Toast(outcome == Reach.Outcome.Caught ? "Caught it!"
+                : outcome == Reach.Outcome.TooHigh ? "It floated lower than that."
+                : outcome == Reach.Outcome.TooLow ? "It floated higher than that."
+                : "It was in another square.", 1.6f);
+            state = State.Feedback;
+            stateUntil = Time.time + Mathf.Max(FeedbackSeconds, CatchFeedbackSeconds);
+        }
+
+        /// <summary>The fingertip over a square, held still, is a catch at its height.</summary>
+        void UpdateCatch()
+        {
+            var tips = Tips;
+            Pose tip = default;
+            bool have = tips != null && Head != null && tips.TryNearest(GridCenter(), 0.8f, out tip);
+            if (have)
+            {
+                tipSeen = true;
+                // After a catch the finger has to move on before it can catch again (a creature may be riding it).
+                if (!catchArmed && Vector3.Distance(tip.position, lastCatchAt) >= CatchRearmM) catchArmed = true;
+            }
+            int over = -1;
+            double h = 0;
+            if (have && catchArmed) over = Over(tip.position, out h);
+            if (over >= 0 && h > -0.01 && h < 0.3)
+            {
+                if (over != catchOver) { still.Reset(); catchOver = over; }
+                if (still.Feed(Time.time, tip.position.x, tip.position.y, tip.position.z))
+                {
+                    var mean = new Vector3((float)still.MeanX, (float)still.MeanY, (float)still.MeanZ);
+                    int at = Over(mean, out double hm);
+                    catchArmed = false;
+                    lastCatchAt = mean;
+                    catchOver = -1;
+                    JudgeCatch(at >= 0 ? at : over, at >= 0 ? hm : h, "finger");
+                    return;
+                }
+            }
+            else
+            {
+                still.Reset();
+                catchOver = -1;
+            }
+
+            // Hands-free players: no fingertip ever shows up, so Catch is skipped rather than waited on.
+            if (!tipSeen && catchTrials == 0 && Time.time - rungStart > CatchHandWaitSeconds)
+            {
+                Toast("Catch needs hand tracking, so it is skipped this time.", 3f);
+                ladder.SetEnabled(SkillLadder.Rung.Catch, false);
+                ClearPatches();
+                NextTrial();
+            }
+        }
+
+        Vector3 GridCenter()
+        {
+            Vector3 c = Vector3.zero;
+            foreach (var p in Patches) c += p.transform.position;
+            return c / Patches.Length;
+        }
+
+        /// <summary>
+        /// The square a fingertip covers as seen from the head (a floating creature is seen on that sightline,
+        /// not straight above its square), and the fingertip's height above the surface. -1 when none.
+        /// </summary>
+        int Over(Vector3 f, out double h)
+        {
+            h = 0;
+            if (Head == null) return -1;
+            foreach (var p in Patches)
+            {
+                var t = p.transform;
+                Vector3 n = -t.forward;
+                float hF = Vector3.Dot(f - t.position, n);
+                float hH = Vector3.Dot(Head.position - t.position, n);
+                if (hH <= hF + 0.02f) continue;
+                Vector3 q = Head.position + (f - Head.position) * (hH / (hH - hF));
+                Vector3 local = t.InverseTransformPoint(q);
+                if (Mathf.Abs(local.x) <= 0.6f && Mathf.Abs(local.y) <= 0.6f) { h = hF; return p.Index; }
+            }
+            return -1;
+        }
+
+        /// <summary>Held heights need the real distance between the eyes; the rig's eye anchors carry it.</summary>
+        void UpdateIpd()
+        {
+            if (rig == null || rig.leftEyeAnchor == null || rig.rightEyeAnchor == null) return;
+            float e = Vector3.Distance(rig.leftEyeAnchor.position, rig.rightEyeAnchor.position);
+            if (e > 0.045f && e < 0.085f) StereoPatch.Ipd = e;
+        }
+
+        /// <summary>"Sort: 95″  ·  Catch: 7 of 8, within 6 mm" for the rungs that ran ("" for none).</summary>
+        string ProfileLine(SkillLadder.Profile prof)
+        {
+            var parts = new List<string>();
+            if (prof.ThresholdArcsec.TryGetValue(SkillLadder.Rung.Sort, out double st) && !double.IsNaN(st))
+                parts.Add("Sort: " + (prof.AtFloor[SkillLadder.Rung.Sort] ? "≤ " : "") + st.ToString("0") + "″");
+            if (catchTrials > 0)
+                parts.Add("Catch: " + catchHits + " of " + catchTrials +
+                          (catchErrors.Count > 0 ? ", within " + (Median(catchErrors) * 1000).ToString("0") + " mm" : ""));
+            return string.Join("  ·  ", parts);
+        }
+
+        static double Median(List<double> v)
+        {
+            var a = new List<double>(v);
+            a.Sort();
+            int n = a.Count;
+            return n % 2 == 1 ? a[n / 2] : 0.5 * (a[n / 2 - 1] + a[n / 2]);
+        }
+
         void Finish()
         {
             state = State.Done;
-            foreach (var p in Patches) { p.Arcsec = 0; p.MotionArcsec = 0; }
+            ClearPatches();
             var profile = ladder.BuildProfile();
             double z = distances.Count > 0 ? Average(distances) : 0.6;
             bool measured = profile.StereoMeasured && profile.ThresholdArcsec.ContainsKey(SkillLadder.Rung.Spot);
             double thr = measured ? profile.ThresholdArcsec[SkillLadder.Rung.Spot] : double.NaN;
             bool atFloor = measured && profile.AtFloor[SkillLadder.Rung.Spot];
+            bool practice = onlyRung.HasValue && onlyRung.Value != SkillLadder.Rung.Spot;
 
-            log.Add(new SessionLog.Summary
-            {
-                SessionId = sessionId, SubjectId = subjectId, Device = device, UtcStart = utcStart,
-                Trials = trialIndex, ThresholdArcsec = thr, AtFloor = atFloor, FloorArcsec = floorArcsec,
-                Eyes = DevControls.Eyes, Cue = Cue
-            });
+            // One summary per rung that ran; Spot's is the Depth Score (stats.py reads only Spot).
+            if (!practice)
+                log.Add(new SessionLog.Summary
+                {
+                    SessionId = sessionId, SubjectId = subjectId, Device = device, UtcStart = utcStart,
+                    Trials = profile.Trials.TryGetValue(SkillLadder.Rung.Spot, out int spotTrials) ? spotTrials : trialIndex,
+                    ThresholdArcsec = thr, AtFloor = atFloor, FloorArcsec = floorArcsec,
+                    Eyes = DevControls.Eyes, Cue = Cue, Rung = "Spot"
+                });
+            foreach (var r in new[] { SkillLadder.Rung.Sort, SkillLadder.Rung.Catch })
+                if (profile.Trials.TryGetValue(r, out int n))
+                    log.Add(new SessionLog.Summary
+                    {
+                        SessionId = sessionId, SubjectId = subjectId, Device = device, UtcStart = utcStart,
+                        Trials = n, ThresholdArcsec = profile.ThresholdArcsec[r], AtFloor = profile.AtFloor[r],
+                        FloorArcsec = r == SkillLadder.Rung.Catch ? 480 : floorArcsec * 2,
+                        Eyes = DevControls.Eyes, Cue = Cue, Rung = r.ToString()
+                    });
             Flush();
-            lastMeasured = measured;
+            lastMeasured = measured || practice;
+            string profileLine = ProfileLine(profile);
 
             bool motion = Cue == SessionLog.Cue.Motion;
             string line = !measured ? "" : motion ? MotionScore.Describe(thr, atFloor, z)
                                                   : SkillLadder.Describe(SkillLadder.Rung.Spot, thr, atFloor, z);
             if (Title != null)
             {
-                Title.text = measured
+                Title.text = practice
+                    ? "Practice: " + onlyRung.Value + "\n" + (profileLine.Length > 0 ? profileLine : "nothing caught")
+                    : measured
                     ? (motion ? "Motion Depth Score\n" : "Depth Score\n") + line
                     : motion
                         ? "Not measured this time.\nMove your head a little more and try again."
                         : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
+                if (!practice && measured && profileLine.Length > 0) Title.text += "\n" + profileLine;
                 if (Creatures != null) Creatures.Persist();
                 string found = Creatures != null ? Creatures.SessionLine() : "";
                 if (found.Length > 0) Title.text += "\n" + found;
+                // Five lines and more: a little smaller so the card stays inside the comfortable view.
+                if (titleCharSize > 0 && Title.text.Split('\n').Length >= 5) Title.characterSize = titleCharSize * 0.85f;
             }
-            Toast(!measured && !motion ? "Pinch any square to play with motion instead" : "Pinch any square to play again", 9999f);
+            Toast(!measured && !motion && !practice ? "Pinch any square to play with motion instead" : "Pinch any square to play again", 9999f);
+            if (practice) return;   // practice of one rung is not a session result (no score anchor, no leaderboard)
             Finished?.Invoke(new Result
             {
                 Round = Round, Trials = trialIndex, Measured = measured, AtFloor = atFloor,
-                ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line, Cue = Cue
+                ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line, Cue = Cue, ProfileLine = profileLine
             });
         }
 
         void Update()
         {
             if (Paused) return;
+            UpdateIpd();
             if (state == State.Trial || state == State.Feedback) playSeconds += Time.deltaTime;
+            if (state == State.RungIntro && Time.time >= stateUntil) StartTrial();
+            if (state == State.Trial && rung == SkillLadder.Rung.Catch) UpdateCatch();
             if (state == State.Break && Status != null)
             {
                 float left = breakUntil - Time.time;
@@ -504,8 +868,14 @@ namespace Cyclopea
                 Color c = FrameIdle;
                 if (state == State.Feedback)
                 {
-                    if (i == target) c = FrameRight;
+                    // Catch at the wrong height: the right square, but red.
+                    if (i == target) c = rung == SkillLadder.Rung.Catch && !lastCorrect && chosen == target ? FrameWrong : FrameRight;
                     else if (i == chosen) c = FrameWrong;
+                }
+                else if (state == State.Trial && rung == SkillLadder.Rung.Catch)
+                {
+                    // Brightens as the fingertip holds still over a square.
+                    if (i == catchOver) c = Color.Lerp(FrameIdle, FrameHover, 0.3f + 0.7f * (float)still.Progress);
                 }
                 else if (state == State.Tutorial && i == target && tutorialHidden)
                 {
@@ -520,7 +890,7 @@ namespace Cyclopea
 
             if (Status != null && Time.time > toastUntil && (state == State.Trial || state == State.Feedback))
                 Status.text = state == State.Trial || state == State.Feedback
-                    ? $"{subjectId}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
+                    ? $"{subjectId}   {rung}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
                     : "";
         }
 

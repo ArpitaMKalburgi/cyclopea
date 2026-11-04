@@ -14,7 +14,7 @@
 #     Tools/quest.sh shot               save a headset screenshot to Tools/shots/ (Meta VR CLI if present, else adb)
 #
 #   Remote control (development builds; see DevControls.PollRemote)
-#     Tools/quest.sh remote tint=1 eyes=LeftOnly ...    keys: tint, eyes, sign, mode, restart, choose
+#     Tools/quest.sh remote tint=1 eyes=LeftOnly ...    keys: tint, eyes, sign, mode, restart, choose, tutorial, cue, sway, rung, rungs
 #
 #   Meta tools
 #     Tools/quest.sh perf               10 s Perfetto capture with the Meta VR CLI, then its analysis

@@ -35,12 +35,15 @@ Assets/Cyclopea/
   Scripts/Core/                        engine-independent logic (no UnityEngine references)
     DisparityMath, Staircase, SkillLadder, SimulatedObserver, SessionLog, SecretCode, PatchLayout,
     Camouflage (desk palette with guaranteed contrast), Streak (days in a row), VoiceCommands (spoken square choice),
-    Creatures (species from lobes, rarity from disparity, field-guide collection)
+    Creatures (species from lobes, rarity from disparity, field-guide collection),
+    Reach (Catch: where a shift is seen in 3D, touch judgement, hold-still detector)
   Scripts/Runtime/                     one MonoBehaviour per file (Unity only serialises a class whose name matches its file)
-    StereoPatch                        one square of static; keeps disparity constant as the head moves
+    StereoPatch                        one square of static; keeps disparity constant as the head moves, or (Catch) holds
+                                       the creature at a fixed physical height like a real object
     SurfaceFinder                      MRUK table/wall checked against the room -> Depth API PlaceBox -> easel that finds open space
     CreatureDirector / CreatureBody    found creatures: body built from the hidden outline, ride the fingertip (FingerTips), nest, tutorial
-    SpotSession                        4-choice Spot rung: staircase, feedback, JSONL log, Depth Score card, rounds,
+    SpotSession                        the session: Spot (4-choice) -> Sort (pinch the nearer of two) -> Catch (touch it with a
+                                       fingertip at its height), staircase per rung, feedback, JSONL log, Depth Score card, rounds,
                                        stereo/motion cue, first-launch notice, pause/resume, 10-minute rest break, tutorial creature
     IsdkSelector, IsdkPatchEvents      Interaction SDK hand rays + v207 GazeInteractor (look and pinch)
     HeadGaze, EitherHandPinch          head-pose gaze source and pinch selector for the GazeInteractor
@@ -54,9 +57,11 @@ Assets/Cyclopea/
     TuningPanel                        Immersive Debugger panel (dev builds)
     DevControls                        finger switches + adb file remote (dev builds only)
   Editor/CyclopeaSetup.cs              headless setup (incl. ISDK rig via its wizard, XR Operator, Immersive Debugger), scene, APKs, captures
-  Tests/Editor/                        40 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice)
-  Tests/PlayMode/                      real scene: wiring (no missing scripts), simulated sessions, motion mode, notice,
-                                       pause/resume, rest break, placement sweep over every MRUK sample room
+  Tests/Editor/                        57 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice,
+                                       creatures, Catch geometry checked by ray tracing, hold-still detector)
+  Tests/PlayMode/                      17 in the real scene: wiring (no missing scripts), simulated sessions through Spot, Sort
+                                       and Catch, motion mode, notice, tutorial, creatures, pause/resume, rest break,
+                                       placement sweep over every MRUK sample room
 Tools/
   quest.sh                             install / run / log / sessions / stats / remote / Meta VR CLI perf + fov / OVR Metrics /
                                        XR Operator per-eye check / upload to the Competition channel
@@ -65,7 +70,7 @@ Tools/
   verify_motion.py                     motion mode: the creature slides by the commanded amount with head sway; both eyes identical
   reveal.py                            per-eye pair -> anaglyph + "what your two eyes compare" frame (trailer, gallery)
   room-sweep.md, captures-report.md    latest results
-  stats.py                             test-retest ICC, one-eye control vs chance, norms comparison
+  stats.py                             test-retest ICC, one-eye control vs chance, norms comparison (Spot only); Sort and Catch apart
   StaircaseHarness/                    .NET harness for the core without Unity
 web/index.html                         Stereo Secrets in the Quest Browser (WebXR, three.js eye layers): share link + backup stereo path
 ```
@@ -77,16 +82,18 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Per-eye shift, production shader through URP | within 0.008 px rms of commanded, from 47.7 px down to 0.1 px |
 | Eyes identical outside the creature | mean abs difference 0.0000 |
 | One eye alone, privileged observer told the outline | 19.5–29.2 % in 4-choice trials (chance 25 %), 40 images per condition |
-| Unit tests in Unity | 44 / 44 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax) |
+| Unit tests in Unity | 57 / 57 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still) |
+| Tests in the real scene | 17 / 17 |
 | Scene wiring | every square is an ISDK ray + gaze target; no missing scripts; all input modes wired |
-| Whole session in the real scene, simulated 60″ observer | completes in 55 trials, Depth Score 83″, log written |
+| Whole session in the real scene, simulated 60″ observer | Spot completes in 55 trials, Depth Score 83″; goes on to Sort (78″) and Catch (7 of 7); one log summary per rung |
 | Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°); Meta XR Audio room model fits every room |
 | Random-guessing player | gets the honest "no stereo measured" card, no number; the next pinch starts motion mode |
-| Found creatures | the creature that comes out of the static has the exact outline hidden in the square (checked in UV against the shader's mask), never blocks a pick (no colliders), rides a fingertip, settles in a nest of at most 5; rarity follows the disparity it was found at; field guide persists; tutorial runs end to end with and without a hand |
+| Found creatures | the creature comes out exactly where it was seen floating (on the sightline, at the height the disparity showed) and, seen from the eyes, covers the exact outline hidden in the square (checked in UV against the shader's mask), never blocks a pick (no colliders), rides a fingertip, settles in a nest of at most 5; rarity follows the disparity it was found at; field guide persists; tutorial runs end to end with and without a hand |
+| Sort and Catch | Sort shows two creatures and only those two squares are answers; Catch holds a creature at a fixed height, a simulated fingertip held still on it catches it (and it climbs on), held 8 cm too high gets "It floated lower than that."; no hands: Catch is skipped, not failed. Closed forms for where a shift is seen checked against a two-ray intersection |
 | Comfort and policy | first launch shows the notice (no medical-claim words, checked) and starts nothing until a pinch; pause freezes the trial and reaction time; 10 minutes of play leads to a rest break |
 | Motion mode (head-motion parallax, one eye is enough) | see `Tools/motion-report.md`; in the real scene only the target square slides, and a simulated player finishes with a Motion Depth Score |
-| Dev APK | builds clean, 100 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
-| Judge APK (release) | builds clean, 73 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |
+| Dev APK | builds clean, 105 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
+| Judge APK (release) | builds clean, 76 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |
 
 What only the headset can answer: that multiview delivers each eye its own image (eye-tint check), the pop direction, frame rate, and the human one-eye control. See `DEVICE-DAY.md`.
 

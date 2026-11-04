@@ -101,13 +101,16 @@ namespace Cyclopea
         /// <summary>
         /// A pick on the trial whose creature hid in <paramref name="p"/>. Correct: it comes out, is
         /// collected at the rarity of <paramref name="foundArcsec"/>, and climbs onto a fingertip if one is
-        /// near. Wrong: it peeks out and ducks back. It appears at the depth it was shown floating.
+        /// near. Wrong: it peeks out and ducks back. It appears exactly where it was seen floating: at
+        /// <paramref name="shownArcsec"/> of disparity, or at <paramref name="heldHeightM"/> above the surface
+        /// when the square held it at a fixed height (Catch).
         /// </summary>
-        public CreatureBody Reveal(StereoPatch p, double foundArcsec, double shownArcsec, bool correct, bool collect = true)
+        public CreatureBody Reveal(StereoPatch p, double foundArcsec, double shownArcsec, bool correct, bool collect = true,
+                                   double heldHeightM = 0)
         {
             if (p == null || Material == null) return null;
             var rarity = Creatures.FromArcsec(foundArcsec);
-            var a = Spawn(p, rarity, shownArcsec);
+            var a = Spawn(p, rarity, shownArcsec, heldHeightM);
             a.Mode = correct ? Mode.Emerge : Mode.Peek;
             if (correct && collect) Collect(a.Body.Species, rarity);
             return a.Body;
@@ -139,19 +142,46 @@ namespace Cyclopea
 
         // ---------- Internals ----------
 
-        Actor Spawn(StereoPatch p, Creatures.Rarity rarity, double shownArcsec)
+        Actor Spawn(StereoPatch p, Creatures.Rarity rarity, double shownArcsec, double heldHeightM = 0)
         {
             var body = CreatureBody.Create(Material, transform, p.MaskRadius * p.transform.lossyScale.x,
                                            p.MaskWobble, p.MaskLobes, p.Seed, rarity);
             body.Look = Head;
             body.Dissolve = 1f;
-            float lift = shownArcsec > 0
-                ? Mathf.Min((float)DisparityMath.PopOutMeters(shownArcsec, p.LastViewingDistance), 0.15f)
-                : 0f;
-            body.transform.SetPositionAndRotation(MaskPoint(p) - p.transform.forward * lift, SurfaceRot(p));
+            double shift = heldHeightM > 0 ? Reach.ShiftForHeight(heldHeightM, p.LastEyeHeight, StereoPatch.Ipd)
+                         : shownArcsec > 0 ? DisparityMath.ShiftMeters(shownArcsec, p.LastViewingDistance)
+                         : 0;
+            SeenPose(p, shift, out var pos, out float scale);
+            body.transform.SetPositionAndRotation(pos, SurfaceRot(p));
+            body.transform.localScale = Vector3.one * scale;
             var a = new Actor { Body = body, T0 = Time.time, Patch = p };
             actors.Add(a);
             return a;
+        }
+
+        /// <summary>
+        /// Where the outline was seen floating for a surface shift <paramref name="shiftM"/>: on the sightline
+        /// from the head to the outline's centre, z·s/(e+s) out from the surface (see Reach). Scaled by
+        /// (z-d)/z, so from the head its footprint covers exactly the outline that floated. Without a head,
+        /// straight out of the surface.
+        /// </summary>
+        void SeenPose(StereoPatch p, double shiftM, out Vector3 pos, out float scale)
+        {
+            Vector3 m = MaskPoint(p);
+            pos = m;
+            scale = 1f;
+            if (shiftM <= 0) return;
+            if (Head == null)
+            {
+                pos = m - p.transform.forward * Mathf.Min((float)Reach.HeightForShift(shiftM, p.LastEyeHeight, StereoPatch.Ipd), 0.15f);
+                return;
+            }
+            Vector3 toHead = Head.position - m;
+            float z = toHead.magnitude;
+            if (z < 1e-4f) return;
+            float d = Mathf.Min((float)Reach.SightlineDistance(shiftM, z, StereoPatch.Ipd), 0.5f * z);
+            pos = m + toHead / z * d;
+            scale = (z - d) / z;
         }
 
         void Collect(Creatures.Species s, Creatures.Rarity r)
