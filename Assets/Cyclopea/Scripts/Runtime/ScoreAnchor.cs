@@ -6,10 +6,11 @@ using UnityEngine;
 namespace Cyclopea
 {
     /// <summary>
-    /// Leaves today's Depth Score on the desk where it was earned, as a persistent spatial anchor.
-    /// Next launch the card is still there, in the same spot in the room: "Last time: 83 arcsec.
-    /// Beat it." It also keeps the daily streak. If the anchor can't be found (another room, a
-    /// cleared space), the card simply doesn't appear; nothing else depends on it.
+    /// Leaves today's Depth Score on the desk where it was earned, as a persistent spatial anchor, with a
+    /// small graph of the last two weeks' best scores under it (higher is finer depth). Next launch the
+    /// card is still there, in the same spot in the room: "Last time: 83 arcsec. Beat it." It also keeps
+    /// the daily streak. If the anchor can't be found (another room, a cleared space), the card simply
+    /// doesn't appear; nothing else depends on it.
     /// </summary>
     public sealed class ScoreAnchor : MonoBehaviour
     {
@@ -19,6 +20,14 @@ namespace Cyclopea
         public SpotSession Session;
         public Transform Head;
         public float SideOffsetM = 0.24f;
+        [Tooltip("Material for the graph lines (the frames' unlit material).")]
+        public Material LineMaterial;
+        public float GraphWidthM = 0.15f, GraphHeightM = 0.045f;
+        public int GraphDays = 14;
+
+        /// <summary>The card's graph of daily bests (null before the first measured session). Test hook.</summary>
+        public LineRenderer Graph { get; private set; }
+        public TextMesh CardText { get; private set; }
 
         public string Status { get; private set; } = "idle";
         public Streak.State StreakState { get; private set; }
@@ -65,6 +74,11 @@ namespace Cyclopea
 
             if (Session == null || Session.Surface == null || Head == null) return;
             string text = r.Measured ? r.ScoreLine : "no stereo measured";
+            if (r.Measured && !r.PersonalBest && Session != null)
+            {
+                string best = Goals.BestLine(Session.Progress, r.Cue);
+                if (best.Length > 0) text += "\n" + best;
+            }
             string old = PlayerPrefs.GetString(KeyUuid, "");
             if (card != null) Destroy(card);
 
@@ -95,20 +109,70 @@ namespace Cyclopea
 #endif
         }
 
-        static GameObject MakeCard(string text)
+        GameObject MakeCard(string text)
         {
             var go = new GameObject("ScoreCard");
-            var tm = go.AddComponent<TextMesh>();
+            var textGo = new GameObject("Text");
+            textGo.transform.SetParent(go.transform, false);
+            textGo.transform.localPosition = new Vector3(0f, GraphHeightM + 0.012f, 0f);
+            var tm = textGo.AddComponent<TextMesh>();
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             tm.font = font;
             tm.fontSize = 56;
-            tm.characterSize = 0.0007f;
-            tm.anchor = TextAnchor.MiddleCenter;
+            tm.characterSize = 0.001f;
+            tm.anchor = TextAnchor.LowerCenter;
             tm.alignment = TextAlignment.Center;
             tm.color = new Color(0.75f, 1f, 0.85f, 0.9f);
+            tm.fontStyle = Options.HighContrast ? FontStyle.Bold : FontStyle.Normal;
             tm.text = text;
-            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            textGo.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            CardText = tm;
+            BuildGraph(go.transform);
             return go;
+        }
+
+        /// <summary>
+        /// The last GraphDays days' best scores, oldest on the left; up is finer depth, on a log scale so each
+        /// halving of the score is the same step. A faint baseline sits under it.
+        /// </summary>
+        void BuildGraph(Transform card)
+        {
+            Graph = null;
+            if (Session == null || Session.Progress == null || LineMaterial == null) return;
+            var days = Session.Progress.Recent(Session.Progress.MainCue, GraphDays);
+            if (days.Count == 0) return;
+            float w = GraphWidthM, h = GraphHeightM;
+            MakeLine(card, "GraphBase", new[] { new Vector3(-w / 2, 0f, 0f), new Vector3(w / 2, 0f, 0f) },
+                     new Color(1f, 1f, 1f, 0.25f), 0.0008f);
+            Vector3[] pts;
+            if (days.Count == 1)
+            {
+                float y = h * (float)ProgressHistory.GraphHeight(days[0].BestArcsec);
+                pts = new[] { new Vector3(-0.004f, y, 0f), new Vector3(0.004f, y, 0f) };   // one day: a short dash
+            }
+            else
+            {
+                pts = new Vector3[days.Count];
+                for (int i = 0; i < days.Count; i++)
+                    pts[i] = new Vector3(-w / 2 + w * i / (days.Count - 1), h * (float)ProgressHistory.GraphHeight(days[i].BestArcsec), 0f);
+            }
+            Graph = MakeLine(card, "Graph", pts, new Color(0.75f, 1f, 0.85f, 0.95f), Options.HighContrast ? 0.0035f : 0.0022f);
+        }
+
+        LineRenderer MakeLine(Transform parent, string name, Vector3[] pts, Color c, float width)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            var lr = go.AddComponent<LineRenderer>();
+            lr.useWorldSpace = false;
+            lr.positionCount = pts.Length;
+            lr.SetPositions(pts);
+            lr.widthMultiplier = width;
+            lr.startColor = lr.endColor = c;
+            lr.sharedMaterial = LineMaterial;
+            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            lr.numCapVertices = 2;
+            return lr;
         }
     }
 }

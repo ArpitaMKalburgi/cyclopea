@@ -7,7 +7,9 @@ Outputs a markdown table with:
      ICC(2,1), two-way random, absolute agreement, computed on log10(arcsec) —
      next to the published baseline (Transl Vis Sci Technol 2023, 12(3):1: r = 0.35–0.74).
   2. One-eye control: proportion correct in LeftOnly/RightOnly trials with a 95 % CI,
-     tested against 4-AFC chance (0.25). Must NOT be above chance.
+     tested against 4-AFC chance (0.25). Must NOT be above chance. Decoy trials (a flat
+     fake in another square) are reported on their own: two eyes take the real creature,
+     one eye is drawn to the fake.
   3. Optional population comparison: percentile of each subject's threshold against a
      norms CSV (columns: percentile, arcsec) transcribed from i-Perception 2015 (CC BY).
 
@@ -117,6 +119,25 @@ def main():
         print(f"{n} trials with one eye covered: {100*p:.0f} % correct (95 % CI {100*lo:.0f}–{100*hi:.0f} %), chance 25 %. **{verdict}**\n")
     else:
         print("No one-eye trials logged yet.\n")
+
+    # 2b. Decoy trials: the real creature floats clearly (>= 960″) and a flat outline sits in another
+    # square, visible to either eye alone. Two eyes should take the real one; one eye has only the
+    # outline to go on, so it should be drawn to the fake far more than chance (1 in 4).
+    decoys = [t for t in trials if t.get("decoy")]
+    if decoys:
+        print("### 2b. Decoy trials (a flat fake in another square; not part of the staircase)")
+        print("| Eyes | Trials | Picked the real one | Picked the fake |\n|---|---|---|---|")
+        for label, cond in (("Both", ("Both",)), ("One covered", ("LeftOnly", "RightOnly"))):
+            ds = [t for t in decoys if t.get("eyes") in cond]
+            if not ds:
+                continue
+            n = len(ds)
+            real = sum(1 for t in ds if t["correct"]) / n
+            fake = sum(1 for t in ds if t.get("decoy_picked")) / n
+            rl, rh = (min(1, max(0, x)) for x in wilson(real, n))
+            fl, fh = (min(1, max(0, x)) for x in wilson(fake, n))
+            print(f"| {label} | {n} | {100*real:.0f} % ({100*rl:.0f}–{100*rh:.0f}) | {100*fake:.0f} % ({100*fl:.0f}–{100*fh:.0f}) |")
+        print()
 
     # 3. Population comparison.
     if a.norms:

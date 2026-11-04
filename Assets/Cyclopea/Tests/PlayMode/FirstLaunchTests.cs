@@ -19,6 +19,8 @@ namespace Cyclopea.PlayTests
             PlayerPrefs.DeleteKey(SpotSession.NoticeKey);
             PlayerPrefs.DeleteKey(SpotSession.TutorialKey);
             PlayerPrefs.DeleteKey(CreatureDirector.CollectionKey);
+            PlayerPrefs.DeleteKey(SpotSession.ProgressKey);
+            Options.Reset();
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
                 Scene, new LoadSceneParameters(LoadSceneMode.Single));
@@ -109,6 +111,23 @@ namespace Cyclopea.PlayTests
                 d.Tips.SimulatedTip = null;
                 Object.Destroy(tip.gameObject);
             }
+        }
+
+        [UnityTest]
+        public IEnumerator AcceptingTheNoticeByLookingMakesLookAndHoldTheInput()
+        {
+            var s = Object.FindFirstObjectByType<SpotSession>();
+            yield return null;
+            var dev = Object.FindFirstObjectByType<DevControls>();
+            Assert.True(dev.Dwell.enabled, "look and hold works on the notice, so nobody is stuck behind a pinch");
+            StringAssert.Contains("look at one and hold", s.Status.text);
+            s.Choose(1, "head-dwell");
+            Assert.True(s.ShowingTutorial);
+            Assert.True(Options.LookAndHold, "chosen by looking: the game will use looking");
+            yield return null;
+            Assert.That(DevControls.Mode, Is.EqualTo(DevControls.InputMode.Dwell));
+            Assert.True(dev.Dwell.enabled);
+            Options.Reset();
         }
 
         [UnityTest]

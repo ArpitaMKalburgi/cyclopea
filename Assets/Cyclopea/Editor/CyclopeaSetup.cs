@@ -549,7 +549,7 @@ namespace Cyclopea.EditorTools
             voice.Patches = patches; voice.Session = session;
             session.Selectors = new PatchSelector[] { isdk, handRay, dwell, micro, voice, keys };
             session.Title = MakeText("Title", game.transform, 0.0011f, 72);
-            session.Status = MakeText("Status", game.transform, 0.0007f, 56);
+            session.Status = MakeText("Status", game.transform, 0.001f, 56);
             session.Audio = game.AddComponent<AudioSource>();
             session.Audio.playOnAwake = false;
             session.Audio.spatialBlend = 0f;
@@ -596,6 +596,11 @@ namespace Cyclopea.EditorTools
             camo.Session = session; camo.CameraAccess = cameraAccess;
             var scores = game.AddComponent<ScoreAnchor>();
             scores.Session = session; scores.Head = center;
+            scores.LineMaterial = frameMat;
+            // Home card: the daily Depth Check's hub, its buttons are the four squares (every input works).
+            var home = game.AddComponent<HomeCard>();
+            home.Session = session; home.Scores = scores; home.Dev = dev;
+            session.Home = home;
             var platform = game.AddComponent<PlatformServices>();
             platform.Session = session; platform.Scores = scores;
             var tuning = game.AddComponent<TuningPanel>();
@@ -605,7 +610,7 @@ namespace Cyclopea.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             report.AppendLine("Scene: " + ScenePath + " (rig, passthrough underlay, hands, ISDK rig + gaze, microgestures, MRUK, " +
-                              "depth raycast, passthrough camera, 4 patches, session, creatures + fingertips, anchor, platform, tuning)");
+                              "depth raycast, passthrough camera, 4 patches, session, creatures + fingertips, anchor, home card, platform, tuning)");
         }
 
         static OVRHand MakeHand(GameObject prefab, Transform anchor, bool isLeft)

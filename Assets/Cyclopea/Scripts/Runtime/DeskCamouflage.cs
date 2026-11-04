@@ -44,8 +44,9 @@ namespace Cyclopea
 
         void OnRound(int round)
         {
-            bool camo = Ready && round >= 2;
-            var p = camo ? Palette : Camouflage.Default;
+            // High contrast wins: black and white static every round, no desk colours.
+            bool camo = Ready && round >= 2 && !Options.HighContrast;
+            var p = Options.HighContrast ? Camouflage.HighContrast : camo ? Palette : Camouflage.Default;
             StereoPatch.BackgroundColor = ToColor(p.Background);
             StereoPatch.DotColor = ToColor(p.Dots);
             if (camo && Session != null) Session.Toast("Round " + round + ": they're hiding in your desk's colours", 4f);

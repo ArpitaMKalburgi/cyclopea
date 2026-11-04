@@ -30,7 +30,8 @@ namespace Cyclopea.Core
             public EyeCondition Eyes;
             public bool Correct;
             public int ReactionMs;
-            public bool Decoy;
+            public bool Decoy;                // a flat fake outline was in one of the other squares (not scored)
+            public bool DecoyPicked;          // ...and the player picked the fake
             public string Phase;              // Descent / Tracking
             public Cue Cue;
             public string Rung = "Spot";      // Spot / Sort / Catch (SkillLadder.Rung)
@@ -71,6 +72,7 @@ namespace Cyclopea.Core
             B("correct", t.Correct) + "," +
             N("rt_ms", t.ReactionMs) + "," +
             B("decoy", t.Decoy) + "," +
+            (t.Decoy ? B("decoy_picked", t.DecoyPicked) + "," : "") +
             S("phase", t.Phase) + "," +
             S("cue", t.Cue.ToString()) + "," +
             S("rung", t.Rung) +

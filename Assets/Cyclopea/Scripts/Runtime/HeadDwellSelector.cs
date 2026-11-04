@@ -20,6 +20,9 @@ namespace Cyclopea
 
         void OnDisable() { Progress = 0; current = null; Hovered = null; }
 
+        /// <summary>Start the hold again (after any choice, by any input), so a gaze that stays put cannot answer twice.</summary>
+        public void ResetDwell() { since = Time.time; Progress = 0; }
+
         void Update()
         {
             if (Head == null) return;

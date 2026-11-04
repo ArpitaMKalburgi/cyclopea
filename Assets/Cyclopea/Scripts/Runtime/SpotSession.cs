@@ -28,6 +28,10 @@ namespace Cyclopea
 
         /// <summary>Set once the first-launch tutorial creature has been found.</summary>
         public const string TutorialKey = "cyc_tutorial_v1";
+        /// <summary>Depth Scores across days (ProgressHistory), and the cue of the last measured session.</summary>
+        public const string ProgressKey = "cyc_progress_v1", CueKey = "cyc_cue_v1";
+        /// <summary>Shown under every menu-like screen: both ways of choosing work there.</summary>
+        public const string MenuHint = "Pinch a square, or look at one and hold";
 
         [Header("Scene")]
         public Transform Head;
@@ -41,6 +45,8 @@ namespace Cyclopea
         public AudioSource CreatureVoice;
         [Tooltip("Found creatures come out of the static, ride your fingertip and gather in a nest; runs the tutorial creature.")]
         public CreatureDirector Creatures;
+        [Tooltip("The daily home card: streak, best, next goal; the squares become Play / mode / Field guide / Options.")]
+        public HomeCard Home;
 
         [Header("Layout")]
         public float PatchSize = 0.12f;
@@ -71,12 +77,27 @@ namespace Cyclopea
         [Tooltip("Catch: the fingertip must move this far after a catch before it can catch again (metres).")]
         public float CatchRearmM = 0.04f;
 
-        static readonly Color FrameIdle = new Color(1f, 1f, 1f, 0.18f);
-        static readonly Color FrameHover = new Color(1f, 1f, 1f, 0.75f);
-        static readonly Color FrameRight = new Color(0.35f, 1f, 0.55f, 1f);
-        static readonly Color FrameWrong = new Color(1f, 0.35f, 0.35f, 1f);
+        [Header("Decoys")]
+        [Tooltip("Chance that a Spot trial carries a fake: a flat outline either eye can see, in another square. " +
+                 "Decoy trials are checks, not staircase steps: the real creature floats clearly (DecoyTargetArcsec).")]
+        public float DecoyChance = 0.18f;
+        [Tooltip("Decoys start once Spot's staircase has turned this many times (the player has learned what floating looks like).")]
+        public int DecoyAfterReversals = 2;
+        public double DecoyTargetArcsec = 960;
 
-        enum State { Intro, Tutorial, Trial, Feedback, Done, Break, RungIntro }
+        [Header("Inclusion")]
+        [Tooltip("No choice for this long in a trial: look and hold switches on as well, and a toast says so.")]
+        public float IdleAssistSeconds = 25f;
+
+        static readonly Color FrameIdle = new Color(1f, 1f, 1f, 0.18f);
+        static readonly Color FrameIdleHighContrast = new Color(1f, 1f, 1f, 0.5f);
+        static readonly Color FrameHover = new Color(1f, 1f, 1f, 0.75f);
+        // Colour-blind safe (blue / orange, Okabe-Ito), and never colour alone: the right square's frame is also thicker.
+        public static readonly Color FrameRight = new Color(0.30f, 0.72f, 1f, 1f);
+        public static readonly Color FrameWrong = new Color(1f, 0.55f, 0.08f, 1f);
+        public const float RightFrameWidth = 2.4f;
+
+        enum State { Intro, Tutorial, Trial, Feedback, Done, Break, RungIntro, Home }
 
         /// <summary>What a finished session produced; other systems (score anchor, camouflage, platform) listen for it.</summary>
         public struct Result
@@ -88,6 +109,8 @@ namespace Cyclopea
             public SessionLog.Cue Cue;
             /// <summary>Sort and Catch results, one line ("" when only Spot ran).</summary>
             public string ProfileLine;
+            /// <summary>Finer than every earlier score with this cue (as shown, in whole arcseconds).</summary>
+            public bool PersonalBest;
         }
 
         /// <summary>
@@ -147,11 +170,21 @@ namespace Cyclopea
         readonly List<double> catchErrors = new List<double>();
         OVRCameraRig rig;
 
+        // Decoys, the home card, inclusion.
+        int decoy = -1, decoyTrials, decoysPicked, sinceDecoy;
+        float tutorialHiddenAt, frameWidth;
+        HeadDwellSelector dwellSel;
+        public ProgressHistory Progress { get; private set; } = new ProgressHistory();
+        /// <summary>Look and hold switched itself on because nothing was chosen for a while (this run only).</summary>
+        public bool DwellAssist { get; private set; }
+
         // Pause reasons; play resumes only when none is left.
         public const int PauseFocus = 1, PauseUnmounted = 2, PauseApp = 4, PauseManual = 8;
 
         void Awake()
         {
+            Options.Load();
+            Progress = ProgressHistory.Parse(PlayerPrefs.GetString(ProgressKey, ""));
             clipRight = Tones.Chirp(880, 1320, 0.16f);
             clipWrong = Tones.Chirp(330, 220, 0.18f);
             clipTick = Tones.Chirp(1500, 1500, 0.03f);
@@ -194,6 +227,7 @@ namespace Cyclopea
         /// <summary>Replays the tutorial (dev remote; also what a first launch does after the notice).</summary>
         public void StartTutorial()
         {
+            if (Home != null) Home.Hide();
             state = State.Tutorial;
             tutorialHidden = tutorialFound = false;
             chosen = -1;
@@ -216,10 +250,11 @@ namespace Cyclopea
             if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = 1920;
             else Patches[target].MotionArcsec = 1920;
             tutorialHidden = true;
+            tutorialHiddenAt = Time.time;
             if (Title != null)
                 Title.text = Cue == SessionLog.Cue.Motion
-                    ? "It hid in the static. Sway your head to see it.\nPoint at it and pinch."
-                    : "It hid in the static. See it float?\nPoint at it and pinch.";
+                    ? "It hid in the static. Sway your head to see it.\n" + How("Point at it and pinch.", "Look at it and hold.")
+                    : "It hid in the static. See it float?\n" + How("Point at it and pinch.", "Look at it and hold.");
         }
 
         void OnTutorialPick(StereoPatch p)
@@ -242,6 +277,9 @@ namespace Cyclopea
                 Toast("Not that one. Look for the square that floats.", 2.5f);
             }
         }
+
+        /// <summary>The pinch wording, or the look-and-hold wording when that is how this player chooses.</summary>
+        string How(string pinch, string look) => Options.LookAndHold || DwellAssist ? look : pinch;
 
         // ---------- Pause / resume ----------
         // System menu, headset off, app backgrounded: the trial freezes (reaction time and the 10-minute
@@ -286,7 +324,44 @@ namespace Cyclopea
                 Title.characterSize = titleCharSize * 0.7f;
                 Title.text = NoticeText;
             }
-            Toast("Pinch any square to start", 9999f);
+            Toast(MenuHint + ", to start", 9999f);
+        }
+
+        // ---------- Home card ----------
+        // From the second launch on (and after each score card): streak, best, next goal; the squares are buttons.
+
+        public bool ShowingHome => state == State.Home;
+
+        public void ShowHome()
+        {
+            if (Home == null) { StartAllRungs(); return; }
+            state = State.Home;
+            ClearPatches();
+            Home.Show(HomeCard.Page.Home);
+            if (dwellSel != null) dwellSel.ResetDwell();
+            Toast(MenuHint, 9999f);
+        }
+
+        /// <summary>Screens that wait for one choice: the notice, the home card, the score card, a finished break.</summary>
+        public bool InMenu => state == State.Intro || state == State.Home || state == State.Done ||
+                              (state == State.Break && Time.time >= breakUntil);
+
+        /// <summary>Look and hold is live: chosen in Options, switched on by the idle assist, or a menu is showing.</summary>
+        public bool WantsLookAndHold => Options.LookAndHold || DwellAssist || InMenu;
+
+        /// <summary>Stereo, or motion once the last measured session was in motion mode.</summary>
+        public SessionLog.Cue PreferredCue
+        {
+            get => PlayerPrefs.GetInt(CueKey, 0) == 1 ? SessionLog.Cue.Motion : SessionLog.Cue.Stereo;
+            private set { PlayerPrefs.SetInt(CueKey, value == SessionLog.Cue.Motion ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>Title text at its normal size, a little smaller from five lines so it stays inside the comfortable view.</summary>
+        public void SetTitle(string text)
+        {
+            if (Title == null) return;
+            Title.text = text;
+            if (titleCharSize > 0) Title.characterSize = titleCharSize * (text.Split('\n').Length >= 5 ? 0.85f : 1f);
         }
 
         // ---------- Rest break ----------
@@ -316,7 +391,8 @@ namespace Cyclopea
 
         void ClearPatches()
         {
-            foreach (var p in Patches) if (p != null) { p.Arcsec = 0; p.MotionArcsec = 0; p.HoldHeightM = 0; }
+            foreach (var p in Patches) if (p != null) { p.Arcsec = 0; p.MotionArcsec = 0; p.HoldHeightM = 0; p.Decoy = false; }
+            decoy = -1;
         }
 
         // Test hooks.
@@ -331,9 +407,12 @@ namespace Cyclopea
             rig = FindFirstObjectByType<OVRCameraRig>();
             UpdateIpd();
             if (Title != null) titleCharSize = Title.characterSize;
+            if (Frames.Length > 0 && Frames[0] != null) frameWidth = Frames[0].widthMultiplier;
+            foreach (var sel in Selectors) if (sel is HeadDwellSelector d) dwellSel = d;
             Place(Surface != null ? Surface.Current : default);
             if (PlayerPrefs.GetInt(NoticeKey, 0) != 1) ShowNotice();
             else if (PlayerPrefs.GetInt(TutorialKey, 0) != 1) StartTutorial();
+            else if (Progress.Count > 0 && Home != null) ShowHome();   // a returning player starts at the home card
             else Restart();
         }
 
@@ -349,6 +428,8 @@ namespace Cyclopea
         /// <summary>Catch: how high the creature is held above the surface (metres).</summary>
         public double CatchHeightM => catchHeight;
         public float CatchHoldProgress => (float)still.Progress;
+        /// <summary>The square holding a flat fake this trial, or -1.</summary>
+        public int CurrentDecoy => decoy;
 
         /// <summary>
         /// Catch with the fingertip over square <paramref name="index"/> at <paramref name="heightM"/> above the
@@ -375,6 +456,7 @@ namespace Cyclopea
 
         public void Restart()
         {
+            if (Home != null) Home.Hide();
             sessionId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + rng.Next(1000, 9999);
             subjectId = "P" + PlayerPrefs.GetInt(SubjectKey, 1).ToString("00");
             utcStart = DateTime.UtcNow;
@@ -386,6 +468,7 @@ namespace Cyclopea
             catchTrials = catchHits = 0;
             catchErrors.Clear();
             catchHeight = 0;
+            decoy = -1; decoyTrials = decoysPicked = sinceDecoy = 0;
             log = new SessionLog();
             logged = 0;
             trialIndex = 0;
@@ -399,10 +482,11 @@ namespace Cyclopea
             if (Title != null && titleCharSize > 0) Title.characterSize = titleCharSize;
             if (Title != null)
                 Title.text = Cue == SessionLog.Cue.Motion
-                    ? "Sway your head gently from side to side.\nOne square's static slides differently. Pinch it."
+                    ? (Options.LessMovement ? "The static sways for you.\nOne square's static slides differently. " + How("Pinch it.", "Look at it and hold.")
+                                            : "Sway your head gently from side to side.\nOne square's static slides differently. " + How("Pinch it.", "Look at it and hold."))
                     : Round == 1
-                        ? "One square hides a creature.\nOnly two eyes can see it. Pinch it."
-                        : "Round " + Round + ". Same creatures, harder to find.\nPinch the one you see.";
+                        ? "One square hides a creature.\nOnly two eyes can see it. " + How("Pinch it.", "Look at it and hold.")
+                        : "Round " + Round + ". Same creatures, harder to find.\n" + How("Pinch the one you see.", "Look at the one you see and hold.");
             NextTrial();
         }
 
@@ -485,7 +569,7 @@ namespace Cyclopea
                     return prof.StereoMeasured && prof.ThresholdArcsec.TryGetValue(SkillLadder.Rung.Spot, out double thr) &&
                            thr <= SortGateArcsec;
                 case SkillLadder.Rung.Catch:
-                    return Tips != null;
+                    return Tips != null && !Options.LessMovement;   // Less movement: no reaching
                 default:
                     return true;
             }
@@ -515,6 +599,7 @@ namespace Cyclopea
         {
             target = rng.Next(0, Patches.Length);
             sortOther = -1;
+            decoy = -1;
             double lv = ladder.CurrentArcsec;
             foreach (var p in Patches)
             {
@@ -542,20 +627,40 @@ namespace Cyclopea
                     break;
                 }
                 default:
-                    if (Cue == SessionLog.Cue.Stereo) Patches[target].Arcsec = lv;
+                    if (DecoyDue())
+                    {
+                        // A check, not a step: the real creature floats clearly, and a flat fake sits in another square.
+                        decoy = (target + 1 + rng.Next(0, Patches.Length - 1)) % Patches.Length;
+                        Patches[decoy].Decoy = true;
+                        Patches[target].Arcsec = Math.Min(1920, Math.Max(DecoyTargetArcsec, 2 * lv));
+                        sinceDecoy = 0;
+                    }
+                    else if (Cue == SessionLog.Cue.Stereo)
+                    {
+                        Patches[target].Arcsec = lv;
+                        sinceDecoy++;
+                    }
                     else Patches[target].MotionArcsec = lv;
                     break;
             }
             chosen = -1;
             trialStart = Time.time;
             state = State.Trial;
+            if (dwellSel != null) dwellSel.ResetDwell();
         }
+
+        /// <summary>Spot in stereo, past the first turns of the staircase, at least three trials since the last fake.</summary>
+        bool DecoyDue() =>
+            rung == SkillLadder.Rung.Spot && Cue == SessionLog.Cue.Stereo && !onlyRung.HasValue && DecoyChance > 0 &&
+            ladder.CurrentStaircase.Reversals >= DecoyAfterReversals && sinceDecoy >= 3 && rng.NextDouble() < DecoyChance;
 
         void OnSelected(StereoPatch p, string method)
         {
             if (Paused) return;
             if (state == State.Intro)
             {
+                // Accepted by looking and holding: this player chooses that way, so the game will too.
+                if (method == "head-dwell" && !Options.LookAndHold) { Options.LookAndHold = true; Options.Save(); }
                 PlayerPrefs.SetInt(NoticeKey, 1);
                 PlayerPrefs.Save();
                 if (PlayerPrefs.GetInt(TutorialKey, 0) != 1) StartTutorial();
@@ -563,6 +668,12 @@ namespace Cyclopea
                 return;
             }
             if (state == State.Tutorial) { if (p != null) OnTutorialPick(p); return; }
+            if (state == State.Home)
+            {
+                if (p != null && Home != null) Home.Pick(p.Index, method);
+                if (dwellSel != null) dwellSel.ResetDwell();
+                return;
+            }
             if (state == State.Break)
             {
                 if (Time.time < breakUntil) return;
@@ -575,11 +686,12 @@ namespace Cyclopea
             {
                 // After the honest "no stereo" card, the next pinch starts the motion version.
                 if (Cue == SessionLog.Cue.Stereo && !lastMeasured) StartCue(SessionLog.Cue.Motion);
-                else StartAllRungs();
+                else ShowHome();   // the home card: streak, best, what to find next, Play
                 return;
             }
             if (state != State.Trial || p == null) return;
             if (rung == SkillLadder.Rung.Catch) return;   // caught with a fingertip, not a pinch
+            if (decoy >= 0) { JudgeDecoy(p, method); return; }
             bool sort = rung == SkillLadder.Rung.Sort;
             if (sort && p.Index != target && p.Index != sortOther)
             {
@@ -631,6 +743,32 @@ namespace Cyclopea
             if (Creatures != null) Creatures.Reveal(Patches[target], level, Math.Max(level, 1920), correct);
             state = State.Feedback;
             stateUntil = Time.time + FeedbackSeconds;
+        }
+
+        /// <summary>A trial with a fake in it: logged and counted, never fed to the staircase.</summary>
+        void JudgeDecoy(StereoPatch p, string method)
+        {
+            bool correct = p.Index == target, fooled = p.Index == decoy;
+            double shown = Patches[target].Arcsec;
+            double z = Mean(q => q.LastViewingDistance);
+            log.Add(new SessionLog.Trial
+            {
+                SessionId = sessionId, SubjectId = subjectId, Device = device, UtcTime = DateTime.UtcNow,
+                Index = trialIndex++, LevelArcsec = shown, ViewingDistanceM = z, Mode = SessionLog.CatchMode.FourAFC,
+                Eyes = DevControls.Eyes, Correct = correct, ReactionMs = (int)((Time.time - trialStart) * 1000),
+                Decoy = true, DecoyPicked = fooled, Phase = "Decoy", Cue = Cue, Rung = rung.ToString()
+            });
+            Flush();
+            decoyTrials++;
+            if (fooled) decoysPicked++;
+            lastCorrect = correct;
+            chosen = p.Index;
+            PlayAtCreature(correct ? clipRight : clipWrong, Patches[target], shown);
+            if (Creatures != null) Creatures.Reveal(Patches[target], shown, Math.Max(shown, 1920), correct);
+            if (fooled) Toast("A fake! That one was flat. Real ones float.", 2.5f);
+            else if (correct && decoyTrials - decoysPicked == 1) Toast("You ignored a fake. Only real ones float.", 2.2f);
+            state = State.Feedback;
+            stateUntil = Time.time + FeedbackSeconds + (fooled ? 0.6f : 0f);
         }
 
         // ---------- Catch ----------
@@ -765,6 +903,7 @@ namespace Cyclopea
             if (catchTrials > 0)
                 parts.Add("Catch: " + catchHits + " of " + catchTrials +
                           (catchErrors.Count > 0 ? ", within " + (Median(catchErrors) * 1000).ToString("0") + " mm" : ""));
+            if (decoyTrials > 0) parts.Add("Fakes ignored: " + (decoyTrials - decoysPicked) + " of " + decoyTrials);
             return string.Join("  ·  ", parts);
         }
 
@@ -812,6 +951,17 @@ namespace Cyclopea
             bool motion = Cue == SessionLog.Cue.Motion;
             string line = !measured ? "" : motion ? MotionScore.Describe(thr, atFloor, z)
                                                   : SkillLadder.Describe(SkillLadder.Rung.Spot, thr, atFloor, z);
+
+            // Growth between sessions: the day's best is kept, and a finer score than ever before is said out loud.
+            bool best = false;
+            if (measured && !practice)
+            {
+                best = Progress.Record(DateTime.Now, Cue, thr);
+                PlayerPrefs.SetString(ProgressKey, Progress.Serialize());
+                PreferredCue = Cue;
+                PlayerPrefs.Save();
+                if (best) line += "\nNew personal best!";
+            }
             if (Title != null)
             {
                 Title.text = practice
@@ -828,12 +978,14 @@ namespace Cyclopea
                 // Five lines and more: a little smaller so the card stays inside the comfortable view.
                 if (titleCharSize > 0 && Title.text.Split('\n').Length >= 5) Title.characterSize = titleCharSize * 0.85f;
             }
-            Toast(!measured && !motion && !practice ? "Pinch any square to play with motion instead" : "Pinch any square to play again", 9999f);
+            Toast(!measured && !motion && !practice ? "Pinch any square to play with motion instead"
+                  : Home != null ? MenuHint + ", to go on" : "Pinch any square to play again", 9999f);
             if (practice) return;   // practice of one rung is not a session result (no score anchor, no leaderboard)
             Finished?.Invoke(new Result
             {
                 Round = Round, Trials = trialIndex, Measured = measured, AtFloor = atFloor,
-                ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line, Cue = Cue, ProfileLine = profileLine
+                ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line, Cue = Cue, ProfileLine = profileLine,
+                PersonalBest = best
             });
         }
 
@@ -851,6 +1003,21 @@ namespace Cyclopea
                                        : "Pinch any square to play again";
             }
             if (state == State.Feedback && Time.time >= stateUntil) NextTrial();
+
+            // Nothing chosen for a long while: maybe this player cannot pinch. Look and hold joins in.
+            if (!DwellAssist && !Options.LookAndHold && IdleAssistSeconds > 0 &&
+                ((state == State.Trial && rung != SkillLadder.Rung.Catch && Time.time - trialStart > IdleAssistSeconds) ||
+                 (state == State.Tutorial && tutorialHidden && !tutorialFound && Time.time - tutorialHiddenAt > IdleAssistSeconds)))
+            {
+                DwellAssist = true;
+                if (dwellSel != null) dwellSel.ResetDwell();
+                Toast("Can't pinch? Look at a square and hold your gaze on it.", 6f);
+            }
+            if (Title != null)
+            {
+                var style = Options.HighContrast ? FontStyle.Bold : FontStyle.Normal;
+                if (Title.fontStyle != style) { Title.fontStyle = style; if (Status != null) Status.fontStyle = style; }
+            }
             if (state == State.Tutorial && tutorialFound && Time.time >= stateUntil)
             {
                 PlayerPrefs.SetInt(TutorialKey, 1);
@@ -861,15 +1028,27 @@ namespace Cyclopea
             StereoPatch hovered = null;
             foreach (var s in Selectors)
                 if (s != null && s.isActiveAndEnabled && s.Hovered != null) { hovered = s.Hovered; break; }
+            // Look and hold fills the frame as the gaze holds.
+            float dwell = dwellSel != null && dwellSel.isActiveAndEnabled && dwellSel.Hovered != null ? dwellSel.Progress : 0f;
+            int dwellOn = dwell > 0 ? dwellSel.Hovered.Index : -1;
+            bool hc = Options.HighContrast;
+            Color idle = hc ? FrameIdleHighContrast : FrameIdle;
+            float baseWidth = (frameWidth > 0 ? frameWidth : 0.0025f) * (hc ? 1.8f : 1f);
 
             for (int i = 0; i < Frames.Length; i++)
             {
                 if (Frames[i] == null) continue;
-                Color c = FrameIdle;
+                Color c = idle;
+                float w = 1f;
                 if (state == State.Feedback)
                 {
-                    // Catch at the wrong height: the right square, but red.
-                    if (i == target) c = rung == SkillLadder.Rung.Catch && !lastCorrect && chosen == target ? FrameWrong : FrameRight;
+                    // Catch at the wrong height: the right square, but in the "wrong" colour and thin.
+                    if (i == target)
+                    {
+                        bool miss = rung == SkillLadder.Rung.Catch && !lastCorrect && chosen == target;
+                        c = miss ? FrameWrong : FrameRight;
+                        w = miss ? 1f : RightFrameWidth;
+                    }
                     else if (i == chosen) c = FrameWrong;
                 }
                 else if (state == State.Trial && rung == SkillLadder.Rung.Catch)
@@ -883,15 +1062,23 @@ namespace Cyclopea
                     c = tutorialFound ? FrameRight
                                       : Color.Lerp(FrameIdle, FrameHover, 0.5f + 0.5f * Mathf.Sin(Time.time * 4f));
                     if (!tutorialFound && hovered != null && hovered.Index == i) c = FrameHover;
+                    if (tutorialFound) w = RightFrameWidth;
                 }
                 else if (hovered != null && hovered.Index == i) c = FrameHover;
+                if (i == dwellOn && state != State.Feedback)
+                {
+                    c = Color.Lerp(idle, FrameHover, 0.35f + 0.65f * dwell);
+                    w = 1f + 1.2f * dwell;
+                }
                 Frames[i].startColor = Frames[i].endColor = c;
+                Frames[i].widthMultiplier = baseWidth * w;
             }
 
+            // Development builds: the tester line. The judge build shows only what a player needs.
             if (Status != null && Time.time > toastUntil && (state == State.Trial || state == State.Feedback))
-                Status.text = state == State.Trial || state == State.Feedback
+                Status.text = DevControls.FingerSwitches
                     ? $"{subjectId}   {rung}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
-                    : "";
+                    : Creatures != null && Creatures.FoundThisSession > 0 ? "Found " + Creatures.FoundThisSession : "";
         }
 
         public void Toast(string msg, float seconds = 2.5f)

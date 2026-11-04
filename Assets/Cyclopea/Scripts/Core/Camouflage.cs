@@ -36,6 +36,13 @@ namespace Cyclopea.Core
             Dots = new Rgb(0.92, 0.92, 0.92)
         };
 
+        /// <summary>High-contrast option: pure black ground, pure white dots. Same dot positions, so no new cue.</summary>
+        public static readonly Palette HighContrast = new Palette
+        {
+            Background = new Rgb(0, 0, 0),
+            Dots = new Rgb(1, 1, 1)
+        };
+
         /// <summary>Palette from surface pixels: darker half becomes the ground, lighter half the dots.</summary>
         public static Palette FromPixels(IReadOnlyList<Rgb> pixels)
         {

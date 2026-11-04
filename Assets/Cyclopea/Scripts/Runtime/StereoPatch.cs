@@ -40,6 +40,8 @@ namespace Cyclopea
         // Motion mode assist: adds a gentle simulated side-to-side sway (metres, Hz) for players who
         // can't move their head. Off by default; the default motion cue is the player's own head.
         public static bool AutoSway;
+        /// <summary>The "Less movement" option: the same sway, for players who cannot move their head much.</summary>
+        public static bool SwayAssist;
         public static float SwayAmplitudeM = 0.03f, SwayHz = 0.5f;
 
         /// <summary>
@@ -61,6 +63,8 @@ namespace Cyclopea
                  "the head moves, like a real object, so a real fingertip can touch it. 0 = present Arcsec.")]
         public double HoldHeightM;
         public bool Decoy;
+        [Tooltip("Multiplies the dots' contrast in both eyes: 1 = full static, low values fade it behind a menu label.")]
+        public float Brightness = 1f;
         public float Seed;
         public Vector2 MaskCenter = new Vector2(0.5f, 0.5f);
         public float MaskRadius = 0.27f;
@@ -113,7 +117,7 @@ namespace Cyclopea
             Vector3 d = Head.position - transform.position;
             double zPerp = Mathf.Max(0.15f, Vector3.Dot(d, -transform.forward));
             double lateral = Vector3.Dot(d, transform.right);
-            if (AutoSway) lateral += SwayAmplitudeM * Mathf.Sin(2f * Mathf.PI * SwayHz * Time.time);
+            if (AutoSway || SwayAssist) lateral += SwayAmplitudeM * Mathf.Sin(2f * Mathf.PI * SwayHz * Time.time);
             double depth = DisparityMath.PopOutMeters(MotionArcsec, zPerp);
             return (float)(-DisparityMath.MotionShiftMeters(lateral, depth, zPerp) / width);
         }
@@ -139,8 +143,8 @@ namespace Cyclopea
             block.SetFloat(MaskWobbleId, MaskWobble);
             block.SetFloat(MaskLobesId, MaskLobes);
             block.SetFloat(DecoyId, Decoy ? 1f : 0f);
-            block.SetFloat(ContrastLId, ContrastL);
-            block.SetFloat(ContrastRId, ContrastR);
+            block.SetFloat(ContrastLId, ContrastL * Brightness);
+            block.SetFloat(ContrastRId, ContrastR * Brightness);
             block.SetFloat(DebugEyeTintId, DebugEyeTint ? 1f : 0f);
             block.SetColor(BackgroundId, BackgroundColor);
             block.SetColor(DotColorId, DotColor);

@@ -14,6 +14,8 @@ namespace Cyclopea
         [Range(-1, 0)] public float TrialBrightness = -0.18f;
         [Range(-1, 0)] public float TrialSaturation = -0.55f;
         public float FadeSeconds = 0.6f;
+        [Tooltip("High-contrast option: the room stays this much darker at all times, so the static and text stand out.")]
+        [Range(-1, 0)] public float HighContrastBrightness = -0.35f;
         public bool Enabled = true;
 
         float b, s, lastB = 99, lastS = 99;
@@ -23,7 +25,8 @@ namespace Cyclopea
             if (Layer == null || Session == null) return;
             bool focus = Enabled && Session.AwaitingChoice;
             float k = FadeSeconds <= 0 ? 1 : Time.deltaTime / FadeSeconds;
-            b = Mathf.MoveTowards(b, focus ? TrialBrightness : 0f, k);
+            float hc = Options.HighContrast ? HighContrastBrightness : 0f;
+            b = Mathf.MoveTowards(b, Mathf.Max(-1f, (focus ? TrialBrightness : 0f) + hc), k);
             s = Mathf.MoveTowards(s, focus ? TrialSaturation : 0f, k);
             if (Mathf.Abs(b - lastB) < 0.002f && Mathf.Abs(s - lastS) < 0.002f) return;
             Layer.SetBrightnessContrastSaturation(b, 0f, s);

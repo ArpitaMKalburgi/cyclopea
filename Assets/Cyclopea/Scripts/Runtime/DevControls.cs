@@ -36,10 +36,34 @@ namespace Cyclopea
 
         bool lm, lr, lp, rm, rr;
 
-        void Start() { Apply(); SetMode(Mode, false); }
+        void Start()
+        {
+            Apply();
+            if (Options.LookAndHold) Mode = InputMode.Dwell;
+            SetMode(Mode, false);
+        }
+
+        void OnEnable() => Options.Changed += OnOptions;
+        void OnDisable() => Options.Changed -= OnOptions;
+
+        /// <summary>"Choose by" on the Options page: look and hold replaces the pinch path, and back.</summary>
+        void OnOptions()
+        {
+            var want = Options.LookAndHold ? InputMode.Dwell : (Mode == InputMode.Dwell ? InputMode.Isdk : Mode);
+            if (want != Mode) SetMode(want, false);
+        }
 
         void Update()
         {
+            // The one place look-and-hold is switched: the chosen input, or any menu-like screen (so a player
+            // who cannot pinch can always get through the notice, the home card and Options), or the idle assist.
+            if (Dwell != null)
+            {
+                bool on = Mode == InputMode.Dwell || (Session != null && Session.WantsLookAndHold);
+                if (Dwell.enabled != on) Dwell.enabled = on;
+                Dwell.DwellSeconds = Mode == InputMode.Dwell ? 1.4f : 2.0f;   // a little longer where it is not the chosen input
+            }
+
             if (FingerSwitches)
             {
                 if (Edge(LeftHand, OVRHand.HandFinger.Middle, ref lm)) ToggleTint();
@@ -66,6 +90,7 @@ namespace Cyclopea
         // Tools/quest.sh push-remote writes <persistentDataPath>/remote.txt over adb; each line is key=value:
         //   tint=1|0  eyes=Both|LeftOnly|RightOnly  sign=1|-1  mode=Isdk|RawRay|Dwell  restart=1  choose=0..3
         //   tutorial=1  cue=Stereo|Motion  sway=1|0  rung=Sort|Catch|all  rungs=1|0
+        //   home=1  option=contrast|look|less (toggles, as the Options page does)  decoys=0..1 (chance per Spot trial)
         // The file is deleted once applied. Lets an agent (Meta VR CLI / XR Operator over MCP) drive the
         // device checks without injecting finger pinches.
         float nextRemote;
@@ -101,6 +126,21 @@ namespace Cyclopea
                         if (Session == null) break;
                         if (Enum.TryParse(v, true, out SkillLadder.Rung r)) { Session.StartAtRung(r); Say("Remote: rung " + r); }
                         else { Session.StartAllRungs(); Say("Remote: all rungs"); }
+                        break;
+                    case "home": if (Session != null) Session.ShowHome(); break;
+                    case "option":
+                        if (v == "contrast") Options.HighContrast = !Options.HighContrast;
+                        else if (v == "look") Options.LookAndHold = !Options.LookAndHold;
+                        else if (v == "less") Options.LessMovement = !Options.LessMovement;
+                        else break;
+                        Options.Save();
+                        Say("Remote: contrast " + (Options.HighContrast ? "high" : "standard") + ", look and hold " +
+                            (Options.LookAndHold ? "on" : "off") + ", less movement " + (Options.LessMovement ? "on" : "off"));
+                        break;
+                    case "decoys":
+                        if (Session != null && float.TryParse(v, System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out float dc))
+                        { Session.DecoyChance = Mathf.Clamp01(dc); Say("Remote: decoy chance " + Session.DecoyChance); }
                         break;
                     case "rungs": if (Session != null) { Session.LadderRungs = v != "0"; Say("Remote: Sort and Catch " + (Session.LadderRungs ? "on" : "off")); } break;
                 }
