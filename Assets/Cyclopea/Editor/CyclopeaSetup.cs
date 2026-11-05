@@ -603,6 +603,10 @@ namespace Cyclopea.EditorTools
             session.Home = home;
             var platform = game.AddComponent<PlatformServices>();
             platform.Session = session; platform.Scores = scores;
+            // Created on the dashboard Nov 4: first_creature, camouflage_round, streak_7 (simple, client
+            // authoritative) and the days_in_a_row leaderboard (higher is better, not user facing).
+            // Every call fails quietly until the Data Use Checkup is approved, so on is safe.
+            platform.UseAchievements = true; platform.UseLeaderboard = true;
             var tuning = game.AddComponent<TuningPanel>();
             tuning.Session = session; tuning.Mood = mood; tuning.Camouflage = camo; tuning.Scores = scores;
             tuning.Platform = platform; tuning.Surface = finder; tuning.Acoustics = roomAcoustics;
