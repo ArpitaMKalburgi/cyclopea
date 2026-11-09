@@ -125,3 +125,8 @@ __pycache__/
 /Tools/captures-motion/
 /Tools/captures-creatures/
 /Assets/Resources/PerformanceTestRunInfo.json*
+/Tools/device-e2e/
+/Tools/sessions/
+/Tools/apk-run.txt
+/Tools/run.txt
+/Tools/setup-run.txt

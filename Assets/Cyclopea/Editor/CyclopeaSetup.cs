@@ -391,7 +391,17 @@ namespace Cyclopea.EditorTools
         static IsdkPatchEvents AddInteractables(StereoPatch patch)
         {
             var go = patch.gameObject;
-            var col = go.GetComponent<Collider>();
+            // A quad gets a non-convex MeshCollider, and ISDK's gaze conecast calls Collider.ClosestPoint on it,
+            // which Unity refuses with a warning every frame (seen on device Nov 9: ~7k warnings in seconds).
+            // A thin box gives the same hits for rays and gaze and supports ClosestPoint.
+            Collider col = go.GetComponent<Collider>();
+            if (col is MeshCollider mc)
+            {
+                UnityEngine.Object.DestroyImmediate(mc);
+                var box = go.AddComponent<BoxCollider>();
+                box.size = new Vector3(1f, 1f, 0.002f);
+                col = box;
+            }
             var surface = go.AddComponent<ColliderSurface>();
             surface.InjectAllColliderSurface(col);
             var ray = go.AddComponent<RayInteractable>();
@@ -550,6 +560,14 @@ namespace Cyclopea.EditorTools
             session.Selectors = new PatchSelector[] { isdk, handRay, dwell, micro, voice, keys };
             session.Title = MakeText("Title", game.transform, 0.0011f, 72);
             session.Status = MakeText("Status", game.transform, 0.001f, 56);
+            // Grow upward from where they are placed, so a longer block never sinks into the desk.
+            session.Title.anchor = TextAnchor.LowerCenter;
+            session.Status.anchor = TextAnchor.LowerCenter;
+            // Readable on a real desk: sized from the distance to the head (first device run: 7–10 dmm, too small).
+            var titleLegible = session.Title.gameObject.AddComponent<LegibleText>();
+            titleLegible.Head = center; titleLegible.TargetDmm = 18f; titleLegible.MaxWidthDeg = 24f;
+            var statusLegible = session.Status.gameObject.AddComponent<LegibleText>();
+            statusLegible.Head = center; statusLegible.TargetDmm = 16f; statusLegible.MaxWidthDeg = 30f;
             session.Audio = game.AddComponent<AudioSource>();
             session.Audio.playOnAwake = false;
             session.Audio.spatialBlend = 0f;

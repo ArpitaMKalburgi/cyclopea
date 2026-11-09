@@ -290,10 +290,16 @@ namespace Cyclopea.PlayTests
             return worst;
         }
 
+        /// <summary>Type size as seen from the head, in mm per metre (Meta: 14 minimum, 18+ comfortable).</summary>
+        static float TypeDmm(SpotSession s, TextMesh t) =>
+            0.1f * t.fontSize * t.characterSize * t.transform.lossyScale.y * 1000f /
+            Vector3.Distance(s.Head.position, t.transform.position);
+
         [UnityTest]
         public IEnumerator EveryTitleAndLabelStaysInsideTheComfortableView()
         {
             const float limit = 27f;   // half of the Meta VR Glasses design area's 54° height; Quest 3 is far wider
+            const float minDmm = 14f;  // Meta typography: smallest legible type
             var s = Session();
             var r = s.Title.GetComponent<Renderer>();
             var texts = new System.Collections.Generic.List<(string name, System.Action show)>
@@ -312,30 +318,46 @@ namespace Cyclopea.PlayTests
             {
                 show();
                 yield return null;
+                yield return null;   // sized in LateUpdate, measured once the mesh follows
                 float deg = WidestDeg(s, r);
-                report.Append(name).Append(' ').Append(deg.ToString("0.0")).Append("°  ");
+                float dmm = TypeDmm(s, s.Title);
+                report.Append(name).Append(' ').Append(deg.ToString("0.0")).Append("° ").Append(dmm.ToString("0")).Append(" dmm  ");
+                Debug.Log("[Cyclopea test] " + name + ": " + deg.ToString("0.0") + "° from gaze centre, type " + dmm.ToString("0.0") +
+                          " dmm, " + (r.bounds.size.x * 100).ToString("0.0") + " × " + (r.bounds.size.y * 100).ToString("0.0") + " cm at " +
+                          Vector3.Distance(s.Head.position, s.Title.transform.position).ToString("0.00") + " m");
                 Assert.That(r.bounds.size.magnitude, Is.GreaterThan(0.01f), name + ": the text was measured");
                 Assert.That(deg, Is.LessThanOrEqualTo(limit), name + " reaches " + deg.ToString("0.0") + "° from the gaze centre");
+                Assert.That(dmm, Is.GreaterThanOrEqualTo(minDmm - 0.1f), name + " type is " + dmm.ToString("0.0") + " dmm, below Meta's minimum");
+                Assert.That(r.bounds.min.y, Is.GreaterThan(s.Patches[0].transform.position.y - 0.005f), name + " sinks into the desk");
             }
             // The status line under the grid, with the longest toast it carries.
             var sr = s.Status.GetComponent<Renderer>();
             s.Toast("Something is very close in front of you.\nTurn toward open space.", 5f);
             yield return null;
+            yield return null;
             float sdeg = WidestDeg(s, sr);
+            float sdmm = TypeDmm(s, s.Status);
             s.Toast("Can't pinch? Look at a square and hold your gaze on it.", 5f);
             yield return null;
+            yield return null;
             sdeg = Mathf.Max(sdeg, WidestDeg(s, sr));
-            report.Append("status ").Append(sdeg.ToString("0.0")).Append("°  ");
+            sdmm = Mathf.Min(sdmm, TypeDmm(s, s.Status));
+            report.Append("status ").Append(sdeg.ToString("0.0")).Append("° ").Append(sdmm.ToString("0")).Append(" dmm  ");
             Assert.That(sdeg, Is.LessThanOrEqualTo(limit), "status line");
+            Assert.That(sdmm, Is.GreaterThanOrEqualTo(minDmm - 0.1f), "status type");
 
             s.Home.Show(HomeCard.Page.Options);
+            yield return null;
             yield return null;
             for (int i = 0; i < 4; i++)
             {
                 var lb = s.Home.Labels[i].GetComponent<Renderer>().bounds;
                 var pb = s.Patches[i].GetComponent<Renderer>().bounds;
-                report.Append("label").Append(i).Append(' ').Append((lb.size.x * 100).ToString("0.0")).Append(" cm  ");
+                float ldmm = TypeDmm(s, s.Home.Labels[i]);
+                report.Append("label").Append(i).Append(' ').Append((lb.size.x * 100).ToString("0.0")).Append(" cm ")
+                      .Append(ldmm.ToString("0")).Append(" dmm  ");
                 Assert.That(lb.size.x, Is.LessThanOrEqualTo(pb.size.x * 1.02f), "label " + i + " fits its square");
+                Assert.That(ldmm, Is.GreaterThanOrEqualTo(minDmm - 0.1f), "label " + i + " type");
             }
             Debug.Log("[Cyclopea test] widest text from gaze centre: " + report);
         }

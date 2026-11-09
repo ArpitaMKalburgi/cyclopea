@@ -22,9 +22,9 @@ namespace Cyclopea
         public const string NoticeText =
             "Cyclopea is a game about depth perception.\n" +
             "It is not a medical device and gives no medical advice.\n" +
-            "If you have a condition that affects your vision,\n" +
-            "ask an eye-care professional before playing.\n" +
-            "Play pauses for a short break after 10 minutes.";
+            "If a condition affects your vision,\n" +
+            "ask an eye-care professional first.\n" +
+            "A short break comes after 10 minutes.";
 
         /// <summary>Set once the first-launch tutorial creature has been found.</summary>
         public const string TutorialKey = "cyc_tutorial_v1";
@@ -400,8 +400,33 @@ namespace Cyclopea
         public bool ShowingNotice => state == State.Intro;
         public int TrialsDone => trialIndex;
 
+        [Tooltip("Display refresh rate to ask for when the headset offers it. The game uses ~6 ms of a 11.1 ms budget at 90 Hz.")]
+        public float PreferredRefreshHz = 90f;
+
+        /// <summary>
+        /// 90 Hz instead of the default 72: smoother creatures and a steadier, clearer field of dots. Asked for only
+        /// when the headset lists it (Meta: request a rate from displayFrequenciesAvailable); dynamic throttling may
+        /// still drop it to 72 when the headset is hot.
+        /// </summary>
+        void RequestRefreshRate()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                var freqs = OVRManager.display?.displayFrequenciesAvailable;
+                if (PreferredRefreshHz > 0 && freqs != null && System.Array.IndexOf(freqs, PreferredRefreshHz) >= 0)
+                {
+                    OVRPlugin.systemDisplayFrequency = PreferredRefreshHz;
+                    Debug.Log("[Cyclopea] display " + PreferredRefreshHz + " Hz requested (available: " + string.Join(", ", freqs) + ")");
+                }
+            }
+            catch (Exception e) { Debug.LogWarning("[Cyclopea] refresh rate: " + e.Message); }
+#endif
+        }
+
         void Start()
         {
+            RequestRefreshRate();
             for (int i = 0; i < Patches.Length; i++) { Patches[i].Index = i; Patches[i].Head = Head; }
             device = DeviceName(out floorArcsec);
             rig = FindFirstObjectByType<OVRCameraRig>();
@@ -504,7 +529,7 @@ namespace Cyclopea
                 t.SetPositionAndRotation(s.Center + s.Right * grid[i].x * step + s.Away * grid[i].y * step, rot);
                 t.localScale = new Vector3(PatchSize, PatchSize, 1f);
             }
-            Vector3 above = s.Center + s.Away * (step * 2f + 0.05f) + s.Normal * 0.01f;
+            Vector3 above = s.Center + s.Away * (step * 2f + 0.025f) + s.Normal * 0.01f;
             Quaternion textRot = Quaternion.LookRotation(above - Head.position, Vector3.up);
             if (Title != null) Title.transform.SetPositionAndRotation(above + s.Normal * 0.02f, textRot);
             if (Status != null)

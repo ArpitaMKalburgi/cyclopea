@@ -52,6 +52,11 @@ namespace Cyclopea
                 tm.alignment = TextAlignment.Center;
                 tm.color = Color.white;
                 go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+                // Readable from where you sit, and never wider than its square.
+                var legible = go.AddComponent<LegibleText>();
+                legible.Head = Session.Head;
+                legible.TargetDmm = 20f;
+                legible.FitInside = Session.Patches[i].transform;
                 go.SetActive(false);
                 Labels[i] = tm;
             }

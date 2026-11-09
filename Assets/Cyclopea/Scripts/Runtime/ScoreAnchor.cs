@@ -126,6 +126,13 @@ namespace Cyclopea
             tm.fontStyle = Options.HighContrast ? FontStyle.Bold : FontStyle.Normal;
             tm.text = text;
             textGo.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            if (Head != null)
+            {
+                var legible = textGo.AddComponent<LegibleText>();
+                legible.Head = Head;
+                legible.TargetDmm = 16f;
+                legible.MaxWidthDeg = 24f;
+            }
             CardText = tm;
             BuildGraph(go.transform);
             return go;

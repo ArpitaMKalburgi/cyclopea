@@ -20,6 +20,19 @@ Everything else is built and checked offline:
    - Already done (Nov 4): the Meta VR CLI (`metavr` 1.10.0, from npm `@meta-quest/metavr`) and Meta's Claude Code plugin `meta-vr` 2.0.0 (36 skills and the metavr MCP server). Restart Claude Code once so the plugin loads. `metavr device list` should show the headset.
    - In the headset's Store: install **OVR Metrics Tool**.
 
+## 0b. One command: Claude plays it end to end (5–8 min, no hands)
+Stand the headset upright where a seated player's head would be (cameras facing the desk and room; lying on
+its side it loses tracking and the system blocks every app), keep the cable in, then from `cyclopea/`:
+
+```
+python -I Tools/device_e2e.py
+```
+
+It installs the dev build fresh, checks each eye gets its own image (accept the one-time screen-capture prompt
+in the headset if it appears), sends `autoplay=60` so a simulated player goes notice → tutorial → round 1 →
+Sort → Catch → score card → home card, screenshots every new screen, then checks the log for exceptions and
+warning floods, the frame rate, and the session logs. Report: `Tools/device-e2e/<time>/report.md`.
+
 ## 1. Install and launch (2 min)
 From `cyclopea/` in Git Bash:
 

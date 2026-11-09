@@ -130,6 +130,35 @@ namespace Cyclopea.PlayTests
             Options.Reset();
         }
 
+        [UnityTest, Timeout(300000)]
+        public IEnumerator AutoplayPlaysTheWholeGameFromFirstLaunchToTheHomeCard()
+        {
+            // The device end-to-end run (Tools/device_e2e.py) sends autoplay=60 over adb; here the same path
+            // runs through the remote file, fast.
+            var s = Object.FindFirstObjectByType<SpotSession>();
+            var dev = Object.FindFirstObjectByType<DevControls>();
+            Assert.True(s.ShowingNotice);
+            dev.AutoplayStepSeconds = 0.05f;
+            System.IO.File.WriteAllText(System.IO.Path.Combine(Application.persistentDataPath, "remote.txt"), "autoplay=60\n");
+            var seen = new System.Collections.Generic.HashSet<string>();
+            float t0 = Time.time;
+            while (Time.time - t0 < 2f && !dev.Autoplaying) yield return null;
+            Assert.True(dev.Autoplaying, "the remote command started autoplay");
+            while (dev.Autoplaying && Time.time - t0 < 240f)
+            {
+                if (s.ShowingTutorial) seen.Add("tutorial");
+                if (s.AwaitingChoice) seen.Add("trial " + s.CurrentRung);
+                if (s.IsDone) seen.Add("done");
+                yield return null;
+            }
+            StringAssert.StartsWith("complete", dev.LastAutoplayStop, "stopped because: " + dev.LastAutoplayStop);
+            Assert.True(s.ShowingHome, "ends on the home card");
+            foreach (var need in new[] { "tutorial", "trial Spot", "done" })
+                Assert.That(seen, Does.Contain(need), "went through " + need);
+            Assert.That(PlayerPrefs.GetInt(SpotSession.NoticeKey, 0), Is.EqualTo(1));
+            Debug.Log("[Cyclopea test] autoplay saw: " + string.Join(", ", seen) + " in " + (Time.time - t0).ToString("0") + " s");
+        }
+
         [UnityTest]
         public IEnumerator TutorialWithoutHandsStillHidesAndAPinchHurriesIt()
         {

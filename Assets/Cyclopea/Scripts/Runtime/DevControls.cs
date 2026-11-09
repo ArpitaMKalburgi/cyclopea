@@ -74,6 +74,7 @@ namespace Cyclopea
             }
 
             if (FingerSwitches && Time.unscaledTime >= nextRemote) { nextRemote = Time.unscaledTime + 0.5f; PollRemote(); }
+            if (autoObserver != null) StepAutoplay();
 
             var kb = Keyboard.current;
             if (kb == null) return;
@@ -91,6 +92,7 @@ namespace Cyclopea
         //   tint=1|0  eyes=Both|LeftOnly|RightOnly  sign=1|-1  mode=Isdk|RawRay|Dwell  restart=1  choose=0..3
         //   tutorial=1  cue=Stereo|Motion  sway=1|0  rung=Sort|Catch|all  rungs=1|0
         //   home=1  option=contrast|look|less (toggles, as the Options page does)  decoys=0..1 (chance per Spot trial)
+        //   autoplay=<arcsec> (a simulated player plays notice -> tutorial -> round -> score card -> home)  autoplay=0
         // The file is deleted once applied. Lets an agent (Meta VR CLI / XR Operator over MCP) drive the
         // device checks without injecting finger pinches.
         float nextRemote;
@@ -143,7 +145,106 @@ namespace Cyclopea
                         { Session.DecoyChance = Mathf.Clamp01(dc); Say("Remote: decoy chance " + Session.DecoyChance); }
                         break;
                     case "rungs": if (Session != null) { Session.LadderRungs = v != "0"; Say("Remote: Sort and Catch " + (Session.LadderRungs ? "on" : "off")); } break;
+                    case "autoplay":
+                        if (double.TryParse(v, System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out double ap) && ap > 0) StartAutoplay(ap);
+                        else StopAutoplay("remote");
+                        break;
                 }
+            }
+        }
+
+        // ---------- Autoplay (development builds only): an agent plays the whole game on the headset ----------
+        // autoplay=<arcsec> starts a simulated player who sees depth down to that many arcseconds (the same
+        // observer the tests use). It accepts the notice, finds the tutorial creature, plays round 1 with Sort and
+        // Catch, reads the score card, opens the home card and stops. Every step is logged as
+        // "[Cyclopea autoplay] ..." for Tools/device_e2e.py. autoplay=0 stops it.
+        SimulatedObserver autoObserver;
+        System.Random autoRng;
+        float autoNext, autoDoneAt;
+        string autoLast = "";
+        int autoSteps;
+
+        public bool Autoplaying => autoObserver != null;
+        /// <summary>Why the last autoplay stopped ("complete: ..." when it reached the home card after a score).</summary>
+        public string LastAutoplayStop { get; private set; } = "";
+        [Tooltip("Seconds between autoplay actions (the device run uses 0.7 so screenshots catch each screen).")]
+        public float AutoplayStepSeconds = 0.7f;
+
+        public void StartAutoplay(double arcsec)
+        {
+            autoObserver = new SimulatedObserver(arcsec, seed: 11);
+            autoRng = new System.Random(5);
+            autoNext = Time.time + 1f;
+            autoDoneAt = -1f;
+            autoLast = "";
+            autoSteps = 0;
+            Say("Remote: autoplay " + arcsec + "″");
+            AutoLog("start, a player who sees " + arcsec + "″");
+        }
+
+        void StopAutoplay(string why)
+        {
+            if (autoObserver == null) return;
+            autoObserver = null;
+            LastAutoplayStop = why;
+            AutoLog("stop: " + why);
+        }
+
+        static void AutoLog(string m) => Debug.Log("[Cyclopea autoplay] " + m);
+
+        string AutoState(SpotSession s) =>
+            s.ShowingNotice ? "notice"
+            : s.ShowingTutorial ? (s.TutorialCreatureHidden ? "tutorial-hidden" : "tutorial")
+            : s.OnBreak ? "break"
+            : s.IntroducingRung ? "rung-intro"
+            : s.ShowingHome ? "home"
+            : s.IsDone ? "done"
+            : s.AwaitingChoice ? "trial " + s.CurrentRung
+            : "busy";
+
+        void StepAutoplay()
+        {
+            var s = Session;
+            if (s == null) { StopAutoplay("no session"); return; }
+            string st = AutoState(s);
+            if (st != autoLast)
+            {
+                AutoLog("state " + st + " | " + (s.Title != null ? s.Title.text.Replace('\n', ' ') : ""));
+                autoLast = st;
+            }
+            if (Time.time < autoNext || s.Paused) return;
+            autoNext = Time.time + AutoplayStepSeconds;
+            // Only actions count toward the limit; waiting through feedback and rung intros does not.
+            if (autoSteps > 800) { StopAutoplay("action limit reached in state " + st); return; }
+            switch (st)
+            {
+                case "notice": s.Choose(0, "autoplay"); autoSteps++; break;
+                case "tutorial": s.Choose(0, "autoplay"); autoSteps++; break;     // a pinch sends it into hiding
+                case "tutorial-hidden": s.Choose(s.CurrentTarget, "autoplay"); autoSteps++; break;
+                case "break": s.Choose(0, "autoplay"); autoSteps++; break;
+                case "done":
+                    if (autoDoneAt < 0) { autoDoneAt = Time.time; AutoLog("score card | " + (s.Title != null ? s.Title.text.Replace("\n", " / ") : "")); }
+                    else if (Time.time - autoDoneAt > Mathf.Max(0.5f, 6f * AutoplayStepSeconds)) { s.Choose(1, "autoplay"); autoSteps++; }
+                    break;
+                case "home":
+                    if (autoDoneAt >= 0) StopAutoplay("complete: home card after a scored session");
+                    else { s.Choose(0, "autoplay"); autoSteps++; }                // a returning player: Play
+                    break;
+                default:
+                    if (!s.AwaitingChoice) break;
+                    autoSteps++;
+                    double level = s.CurrentArcsec;
+                    bool sees = autoObserver.Respond(level);
+                    int pick;
+                    if (sees) pick = s.CurrentTarget;
+                    else if (s.CurrentRung == SkillLadder.Rung.Sort) pick = s.SortOther;
+                    else { int w = autoRng.Next(0, 3); pick = w >= s.CurrentTarget ? w + 1 : w; }
+                    AutoLog("trial " + (s.TrialsDone + 1) + " " + s.CurrentRung + " " + level.ToString("0") + "″ target " + s.CurrentTarget +
+                            (s.CurrentDecoy >= 0 ? " decoy " + s.CurrentDecoy : "") + " -> " + pick);
+                    if (s.CurrentRung == SkillLadder.Rung.Catch) s.CatchAt(pick, s.CatchHeightM, "autoplay");
+                    else s.Choose(pick, "autoplay");
+                    break;
             }
         }
 
