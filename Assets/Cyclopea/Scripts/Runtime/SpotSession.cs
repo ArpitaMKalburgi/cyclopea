@@ -47,6 +47,11 @@ namespace Cyclopea
         public CreatureDirector Creatures;
         [Tooltip("The daily home card: streak, best, next goal; the squares become Play / mode / Field guide / Options.")]
         public HomeCard Home;
+        [Tooltip("All game sounds (Assets/Cyclopea/Audio). Empty slots fall back to plain tones.")]
+        public SoundBank Sounds;
+        [Tooltip("Looping, spatialised: the static's soft hiss, from the squares, while there is static to search.")]
+        public AudioSource Bed;
+        public float BedVolume = 0.5f;
 
         [Header("Layout")]
         public float PatchSize = 0.12f;
@@ -60,6 +65,9 @@ namespace Cyclopea
         public float BreakSeconds = 120f;
         [Tooltip("Tutorial: how long the found creature is celebrated before round 1 begins.")]
         public float TutorialRewardSeconds = 2.6f;
+        [Tooltip("The wink, once the tutorial creature has hidden: see it float, close one eye (it goes flat), open both " +
+                 "(it floats again), then pinch it. Seconds for each of the first three beats.")]
+        public float WinkSeeSeconds = 3.5f, WinkClosedSeconds = 3.5f, WinkOpenSeconds = 2.5f;
         [Tooltip("Title card that introduces Sort or Catch.")]
         public float RungIntroSeconds = 2.5f;
         [Tooltip("Catch: time to watch the caught creature climb on before the next one hides.")]
@@ -89,9 +97,9 @@ namespace Cyclopea
         [Tooltip("No choice for this long in a trial: look and hold switches on as well, and a toast says so.")]
         public float IdleAssistSeconds = 25f;
 
-        static readonly Color FrameIdle = new Color(1f, 1f, 1f, 0.18f);
+        static readonly Color FrameIdle = new Color(0.78f, 0.88f, 1f, 0.22f);
         static readonly Color FrameIdleHighContrast = new Color(1f, 1f, 1f, 0.5f);
-        static readonly Color FrameHover = new Color(1f, 1f, 1f, 0.75f);
+        static readonly Color FrameHover = new Color(1f, 0.97f, 0.9f, 0.85f);
         // Colour-blind safe (blue / orange, Okabe-Ito), and never colour alone: the right square's frame is also thicker.
         public static readonly Color FrameRight = new Color(0.30f, 0.72f, 1f, 1f);
         public static readonly Color FrameWrong = new Color(1f, 0.55f, 0.08f, 1f);
@@ -185,9 +193,17 @@ namespace Cyclopea
         {
             Options.Load();
             Progress = ProgressHistory.Parse(PlayerPrefs.GetString(ProgressKey, ""));
-            clipRight = Tones.Chirp(880, 1320, 0.16f);
-            clipWrong = Tones.Chirp(330, 220, 0.18f);
-            clipTick = Tones.Chirp(1500, 1500, 0.03f);
+            clipRight = Or(Sounds != null ? Sounds.PickRight : null, () => Tones.Chirp(880, 1320, 0.16f));
+            clipWrong = Or(Sounds != null ? Sounds.PickWrong : null, () => Tones.Chirp(330, 220, 0.18f));
+            clipTick = Or(Sounds != null ? Sounds.UiHover : null, () => Tones.Chirp(1500, 1500, 0.03f));
+        }
+
+        static AudioClip Or(AudioClip clip, Func<AudioClip> fallback) => clip != null ? clip : fallback();
+
+        /// <summary>A bank sound, flat (not spatialised); nothing when that slot is empty.</summary>
+        void PlaySfx(Func<SoundBank, AudioClip> pick)
+        {
+            if (Sounds != null) Play(pick(Sounds));
         }
 
         void OnEnable()
@@ -214,7 +230,9 @@ namespace Cyclopea
 
         void OnCollected(Core.Creatures.Species s, Core.Creatures.Rarity r, bool isNew)
         {
-            if (isNew) Toast("New in your field guide: " + Core.Creatures.Name(s, r), 1.8f);
+            if (!isNew) return;
+            Toast("New in your field guide: " + Core.Creatures.Name(s, r), 1.8f);
+            PlaySfx(b => b.NewKind);
         }
 
         // ---------- First-launch tutorial ----------
@@ -251,10 +269,43 @@ namespace Cyclopea
             else Patches[target].MotionArcsec = 1920;
             tutorialHidden = true;
             tutorialHiddenAt = Time.time;
-            if (Title != null)
-                Title.text = Cue == SessionLog.Cue.Motion
-                    ? "It hid in the static. Sway your head to see it.\n" + How("Point at it and pinch.", "Look at it and hold.")
-                    : "It hid in the static. See it float?\n" + How("Point at it and pinch.", "Look at it and hold.");
+            winkBeat = -1;
+            UpdateWink();
+        }
+
+        // The wink: the whole idea in ten seconds, without a rule to read. Two eyes see it float, one eye
+        // sees flat static, two eyes again and it's back. Picking works at every beat.
+        int winkBeat = -1;
+
+        /// <summary>0 see it float, 1 close one eye, 2 open both, 3 pinch it; -1 outside the hidden tutorial.</summary>
+        public int TutorialWinkBeat => state == State.Tutorial && tutorialHidden && !tutorialFound ? winkBeat : -1;
+
+        void UpdateWink()
+        {
+            float t = Time.time - tutorialHiddenAt;
+            int beat = t < WinkSeeSeconds ? 0
+                     : t < WinkSeeSeconds + WinkClosedSeconds ? 1
+                     : t < WinkSeeSeconds + WinkClosedSeconds + WinkOpenSeconds ? 2 : 3;
+            if (beat == winkBeat) return;
+            winkBeat = beat;
+            if (Title != null) Title.text = WinkLine(beat);
+            if (beat == 1) PlaySfx(b => b.EyeClose);
+            else if (beat == 2) PlaySfx(b => b.EyeOpen);
+        }
+
+        string WinkLine(int beat)
+        {
+            bool motion = Cue == SessionLog.Cue.Motion;
+            switch (beat)
+            {
+                case 0: return motion ? "It hid in the static.\nSway your head gently. See it slide?"
+                                      : "It hid in the static.\nSee one square float?";
+                case 1: return motion ? "Now hold your head still." : "Now close one eye.";
+                case 2: return motion ? "Gone. It only shows while you move.\nSway again."
+                                      : "Flat! One eye can't find it.\nOpen both.";
+                default: return (motion ? "Moving shows it.\n" : "Only two eyes can see them.\n") +
+                                How("Point at it and pinch.", "Look at it and hold.");
+            }
         }
 
         void OnTutorialPick(StereoPatch p)
@@ -369,6 +420,7 @@ namespace Cyclopea
         void EnterBreak()
         {
             state = State.Break;
+            PlaySfx(b => b.BreakChime);
             breakUntil = Time.time + BreakSeconds;
             ClearPatches();
             if (Title != null)
@@ -606,6 +658,7 @@ namespace Cyclopea
         {
             rung = r;
             state = State.RungIntro;
+            PlaySfx(b => b.LevelUp);
             ClearPatches();
             stateUntil = Time.time + RungIntroSeconds;
             if (Title != null)
@@ -827,7 +880,7 @@ namespace Cyclopea
             // Caught: it comes out right under the fingertip and climbs on. Missed: it peeks out at the
             // height it really floated, and the toast says which way.
             var p = Patches[target];
-            PlayAtCreature(correct ? clipRight : clipWrong, p, level);
+            PlayAtCreature(correct ? Or(Sounds != null ? Sounds.CatchSuccess : null, () => clipRight) : clipWrong, p, level);
             if (Creatures != null) Creatures.Reveal(p, level, level, correct, true, catchHeight);
             Toast(outcome == Reach.Outcome.Caught ? "Caught it!"
                 : outcome == Reach.Outcome.TooHigh ? "It floated lower than that."
@@ -987,6 +1040,7 @@ namespace Cyclopea
                 PlayerPrefs.Save();
                 if (best) line += "\nNew personal best!";
             }
+            PlaySfx(b => best ? b.PersonalBest : b.ScoreReveal);
             if (Title != null)
             {
                 Title.text = practice
@@ -1043,6 +1097,8 @@ namespace Cyclopea
                 var style = Options.HighContrast ? FontStyle.Bold : FontStyle.Normal;
                 if (Title.fontStyle != style) { Title.fontStyle = style; if (Status != null) Status.fontStyle = style; }
             }
+            if (state == State.Tutorial && tutorialHidden && !tutorialFound) UpdateWink();
+            UpdateBed();
             if (state == State.Tutorial && tutorialFound && Time.time >= stateUntil)
             {
                 PlayerPrefs.SetInt(TutorialKey, 1);
@@ -1095,7 +1151,10 @@ namespace Cyclopea
                     c = Color.Lerp(idle, FrameHover, 0.35f + 0.65f * dwell);
                     w = 1f + 1.2f * dwell;
                 }
-                Frames[i].startColor = Frames[i].endColor = c;
+                // Hover and pulses ease in and out; right / wrong lands at once (feedback must feel instant).
+                bool snap = state == State.Feedback || (state == State.Tutorial && tutorialFound);
+                Color shown = snap ? c : Color.Lerp(Frames[i].startColor, c, 1f - Mathf.Exp(-14f * Time.deltaTime));
+                Frames[i].startColor = Frames[i].endColor = shown;
                 Frames[i].widthMultiplier = baseWidth * w;
             }
 
@@ -1104,6 +1163,23 @@ namespace Cyclopea
                 Status.text = DevControls.FingerSwitches
                     ? $"{subjectId}   {rung}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
                     : Creatures != null && Creatures.FoundThisSession > 0 ? "Found " + Creatures.FoundThisSession : "";
+        }
+
+        /// <summary>The static hisses softly from the squares while there is something hidden in it; fades out otherwise.</summary>
+        void UpdateBed()
+        {
+            if (Bed == null || Bed.clip == null) return;
+            bool on = state == State.Trial || state == State.Feedback || (state == State.Tutorial && tutorialHidden);
+            float target = on ? BedVolume : 0f;
+            Bed.volume = Mathf.MoveTowards(Bed.volume, target, Time.deltaTime * BedVolume / 1.2f);
+            if (Bed.volume > 0f && !Bed.isPlaying) { Bed.loop = true; Bed.Play(); }
+            else if (Bed.volume <= 0f && Bed.isPlaying) Bed.Stop();
+            if (Patches.Length > 0 && Patches[0] != null)
+            {
+                Vector3 c = Vector3.zero;
+                foreach (var p in Patches) c += p.transform.position;
+                Bed.transform.position = c / Patches.Length;
+            }
         }
 
         public void Toast(string msg, float seconds = 2.5f)

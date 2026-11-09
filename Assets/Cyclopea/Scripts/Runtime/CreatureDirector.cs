@@ -21,6 +21,8 @@ namespace Cyclopea
         public StereoPatch[] Patches;
         [Tooltip("Spatialised source (Meta XR Audio); moved to the creature for its hops.")]
         public AudioSource Voice;
+        [Tooltip("Condense, hop, dive, peek and one voice per species. Empty slots fall back to plain tones.")]
+        public SoundBank Sounds;
 
         [Header("Timing")]
         public float EmergeSeconds = 0.4f;
@@ -74,9 +76,16 @@ namespace Cyclopea
         {
             try { Collection = CreatureCollection.Parse(PlayerPrefs.GetString(CollectionKey, "")); }
             catch (Exception) { Collection = new CreatureCollection(); }
-            clipHop = Tones.Chirp(520, 780, 0.06f);
+            clipHop = Sounds != null && Sounds.CreatureHop != null ? Sounds.CreatureHop : Tones.Chirp(520, 780, 0.06f);
             clipLand = Tones.Chirp(900, 1250, 0.07f);
-            clipDive = Tones.Chirp(1200, 420, 0.18f);
+            clipDive = Sounds != null && Sounds.CreatureDive != null ? Sounds.CreatureDive : Tones.Chirp(1200, 420, 0.18f);
+        }
+
+        /// <summary>This creature's own voice (one per species), or the plain landing tone.</summary>
+        AudioClip VoiceOf(Actor a)
+        {
+            var c = Sounds != null && a.Body != null ? Sounds.Chirp((int)a.Body.Species) : null;
+            return c != null ? c : clipLand;
         }
 
         /// <summary>New session: per-session counts restart (the field guide keeps everything).</summary>
@@ -112,6 +121,7 @@ namespace Cyclopea
             var rarity = Creatures.FromArcsec(foundArcsec);
             var a = Spawn(p, rarity, shownArcsec, heldHeightM);
             a.Mode = correct ? Mode.Emerge : Mode.Peek;
+            if (Sounds != null) Say(correct ? Sounds.CreatureCondense : Sounds.CreaturePeek, a.Body.transform.position);
             if (correct && collect) Collect(a.Body.Species, rarity);
             return a.Body;
         }
@@ -135,10 +145,33 @@ namespace Cyclopea
             // first-timer can't miss it.
             GridCenterPose(out var pos, out var rot);
             a.Body.transform.SetPositionAndRotation(pos, rot);
+            if (Sounds != null) Say(Sounds.CreatureCondense, pos);
         }
 
         /// <summary>A pinch during the tutorial wait: the creature goes and hides now.</summary>
         public void IntroSkip() => introSkip = true;
+
+        // ---------- Room colony ----------
+
+        /// <summary>A sound from a point, through the creatures' spatialised voice.</summary>
+        public void SayAt(AudioClip c, Vector3 at) => Say(c, at);
+
+        /// <summary>
+        /// A nest creature of this kind leaves the nest because it is moving into the room: where it sat,
+        /// and it is gone from the nest. False when none of that kind is in the nest.
+        /// </summary>
+        public bool TakeFromNest(Creatures.Species s, Creatures.Rarity r, out Vector3 pos, out Quaternion rot)
+        {
+            pos = default; rot = Quaternion.identity;
+            var a = nest.Find(x => x.Body != null && x.Body.Species == s && x.Body.Rarity == r);
+            if (a == null) return false;
+            pos = a.Body.transform.position;
+            rot = a.Body.transform.rotation;
+            nest.Remove(a);
+            actors.Remove(a);
+            Destroy(a.Body.gameObject);
+            return true;
+        }
 
         // ---------- Internals ----------
 
@@ -251,6 +284,7 @@ namespace Cyclopea
             a.LostSince = -1f;
             if (m == Mode.HopToTip || m == Mode.HopToNest || m == Mode.IntroHopToTip || m == Mode.IntroHopToPatch)
                 Say(clipHop, a.Body.transform.position);
+            else if (m == Mode.Look || m == Mode.IntroWait) Say(VoiceOf(a), a.Body.transform.position);   // looks at you and says hi
         }
 
         /// <summary>Arc toward a (possibly moving) target; returns progress 0..1.</summary>
@@ -327,7 +361,7 @@ namespace Cyclopea
                     a.LastTip = tp.position;
                     if (Hop(a, Seat(tp), RideRot(tp.position), RideScale, HopSeconds, Vector3.up) >= 1f)
                     {
-                        Say(clipLand, tr.position);
+                        Say(VoiceOf(a), tr.position);
                         Begin(a, a.Intro ? Mode.IntroRide : Mode.Ride);
                     }
                     return true;

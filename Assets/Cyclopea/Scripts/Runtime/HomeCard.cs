@@ -21,6 +21,8 @@ namespace Cyclopea
         public SpotSession Session;
         public ScoreAnchor Scores;
         public DevControls Dev;
+        [Tooltip("The creatures living in the room; the home card says how many.")]
+        public RoomColony Room;
         [Tooltip("How faint the static gets behind a label.")]
         public float StaticBrightness = 0.22f;
         public float LabelCharSize = 0.0016f;   // about the title's letter size: ~8 mm at ~60 cm
@@ -159,6 +161,7 @@ namespace Cyclopea
                     if (Scores != null) Line(Goals.StreakLine(Scores.StreakState, DateTime.Now));
                     Line(Goals.BestLine(Session.Progress, cue));
                     Line(Goals.Next(Session.Creatures != null ? Session.Creatures.Collection : null));
+                    if (Room != null) Line(Colony.HomeLine(Room.Colony));
                     return sb.ToString();
             }
         }

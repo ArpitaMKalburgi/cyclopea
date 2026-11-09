@@ -195,7 +195,10 @@ namespace Cyclopea
 
         string AutoState(SpotSession s) =>
             s.ShowingNotice ? "notice"
-            : s.ShowingTutorial ? (s.TutorialCreatureHidden ? "tutorial-hidden" : "tutorial")
+            : s.ShowingTutorial ? (!s.TutorialCreatureHidden ? "tutorial"
+                                   // The wink plays out (each beat is its own state, so the device run screenshots it).
+                                   : s.TutorialWinkBeat >= 0 && s.TutorialWinkBeat < 3 ? "tutorial-wink-" + s.TutorialWinkBeat
+                                   : "tutorial-hidden")
             : s.OnBreak ? "break"
             : s.IntroducingRung ? "rung-intro"
             : s.ShowingHome ? "home"

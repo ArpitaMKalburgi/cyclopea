@@ -26,21 +26,26 @@ Material:
     m_Ints: []
     m_Floats:
     - _CellSize: 0.02
+    - _CommonShift: 0
     - _ContrastL: 1
     - _ContrastR: 1
+    - _CornerRadius: 0.07
     - _DebugEyeTint: 0
     - _Decoy: 0
     - _DotRadius: 0.006
+    - _DotsPerCell: 1
     - _EyeOffset: 0
     - _ForceEye: -1
     - _MaskLobes: 5
     - _MaskRadius: 0.2
     - _MaskWobble: 0.15
     - _OffsetSign: 1
+    - _RimWidth: 0.06
     - _Seed: 0
     m_Colors:
-    - _Background: {r: 0.1, g: 0.1, b: 0.12, a: 1}
-    - _DotColor: {r: 0.92, g: 0.92, b: 0.92, a: 1}
+    - _Background: {r: 0.07, g: 0.08, b: 0.14, a: 1}
+    - _DotColor: {r: 0.98, g: 0.92, b: 0.8, a: 1}
     - _MaskCenter: {r: 0.5, g: 0.5, b: 0, a: 0}
+    - _RimColor: {r: 0.55, g: 0.75, b: 1, a: 0.22}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

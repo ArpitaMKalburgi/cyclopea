@@ -149,7 +149,7 @@ def main():
     (out / "autoplay.txt").write_text("\n".join(steps), encoding="utf-8")
     stop = next((s for s in reversed(steps) if s.startswith("stop")), "no stop line")
     note(done and "complete" in stop, f"autoplay reaches the home card after a scored session ({stop})")
-    for need in ("notice", "tutorial", "trial Spot", "done", "home"):
+    for need in ("notice", "tutorial", "tutorial-wink-1", "tutorial-wink-2", "trial Spot", "done", "home"):
         note(any(k.startswith(need) for k in seen) or any(f"state {need}" in s for s in steps), f"screen reached: {need}")
     for opt in ("trial Sort", "trial Catch"):
         if any(k.startswith(opt) for k in seen):

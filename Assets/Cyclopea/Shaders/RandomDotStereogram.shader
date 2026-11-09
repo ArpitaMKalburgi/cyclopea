@@ -39,6 +39,11 @@ Shader "Cyclopea/RandomDotStereogram"
         _ForceEye   ("Force eye (-1 off)", Float) = -1
         // Debug: 1 = tint left eye red, right eye blue (device check that each eye gets its own image).
         _DebugEyeTint ("Debug eye tint", Float) = 0
+        // Look: rounded corners (UV units; 0 = square) and a soft rim of light just inside the edge.
+        // Both are in display UV, identical for both eyes and all four squares, so they add no cue.
+        _CornerRadius ("Corner radius (UV)", Float) = 0
+        _RimColor ("Rim colour (alpha = strength)", Color) = (0.55, 0.75, 1, 0)
+        _RimWidth ("Rim width (UV)", Float) = 0.05
     }
 
     SubShader
@@ -49,6 +54,8 @@ Shader "Cyclopea/RandomDotStereogram"
             Name "Forward"
             Cull Back
             ZWrite On
+            // Smooth rounded edges with MSAA (the URP asset runs 4x); without MSAA it is a plain cut.
+            AlphaToMask On
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -76,7 +83,18 @@ Shader "Cyclopea/RandomDotStereogram"
                 float  _ContrastR;
                 float  _ForceEye;
                 float  _DebugEyeTint;
+                float  _CornerRadius;
+                float4 _RimColor;
+                float  _RimWidth;
             CBUFFER_END
+
+            // Signed distance to the square's rounded outline in UV (negative inside).
+            float patchSDF(float2 uv)
+            {
+                float r = _CornerRadius;
+                float2 q = abs(uv - 0.5) - (0.5 - r);
+                return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+            }
 
             struct Attributes
             {
@@ -192,9 +210,16 @@ Shader "Cyclopea/RandomDotStereogram"
                     float edge = 1.0 - smoothstep(0.0, _CellSize * 0.35, sd);
                     col = lerp(col, _DotColor.rgb, edge * 0.25);
                 }
+                // Rounded outline and inner rim: display-space only, the same in both eyes.
+                float edgeSD = patchSDF(IN.uv);
+                float aaEdge = max(fwidth(edgeSD), 1e-5);
+                float alpha = 1.0 - smoothstep(-aaEdge, aaEdge, edgeSD);
+                float rim = (1.0 - smoothstep(0.0, _RimWidth, -edgeSD)) * _RimColor.a;
+                col = lerp(col, max(col, _RimColor.rgb), rim);
+
                 if (_DebugEyeTint > 0.5)
                     col *= (eye < 0.5) ? float3(1.0, 0.45, 0.45) : float3(0.45, 0.6, 1.0);
-                return half4(col, 1);
+                return half4(col, alpha);
             }
             ENDHLSL
         }

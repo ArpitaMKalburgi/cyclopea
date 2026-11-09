@@ -32,8 +32,9 @@ namespace Cyclopea.Core
 
         public static readonly Palette Default = new Palette
         {
-            Background = new Rgb(0.10, 0.10, 0.12),
-            Dots = new Rgb(0.92, 0.92, 0.92)
+            // Deep ink ground, warm cream dots: the look of the game (luma gap 0.84, far above MinGap).
+            Background = new Rgb(0.07, 0.08, 0.14),
+            Dots = new Rgb(0.98, 0.92, 0.80)
         };
 
         /// <summary>High-contrast option: pure black ground, pure white dots. Same dot positions, so no new cue.</summary>

@@ -442,8 +442,17 @@ namespace Cyclopea.EditorTools
                 m.SetColor("_DotColor", new Color(0.92f, 0.92f, 0.92f, 1f));
                 m.enableInstancing = true;
             });
+            // The look (Nov 9 art pass): rounded squares with a soft rim, deep ink ground, warm cream dots.
+            // Set every rebuild, so an older material picks it up too.
+            rds.SetColor("_Background", new Color(0.07f, 0.08f, 0.14f, 1f));
+            rds.SetColor("_DotColor", new Color(0.98f, 0.92f, 0.80f, 1f));
+            rds.SetFloat("_CornerRadius", PatchCornerRadius);
+            rds.SetColor("_RimColor", new Color(0.55f, 0.75f, 1f, 0.22f));
+            rds.SetFloat("_RimWidth", 0.06f);
+            EditorUtility.SetDirty(rds);
             var frameMat = MakeMaterial(MaterialsDir + "/Frame.mat", Shader.Find("Sprites/Default"), null);
             var handMask = MakeMaterial(MaterialsDir + "/HandMask.mat", Shader.Find("Cyclopea/HandOccluder"), null);
+            var panelMat = MakeMaterial(MaterialsDir + "/Panel.mat", Shader.Find("Cyclopea/RoundedPanel"), null);
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -524,10 +533,11 @@ namespace Cyclopea.EditorTools
                 var lr = frameGo.AddComponent<LineRenderer>();
                 lr.useWorldSpace = false;
                 lr.loop = true;
-                lr.positionCount = 4;
-                const float e = 0.53f;
-                lr.SetPositions(new[] { new Vector3(-e, -e, -0.002f), new Vector3(e, -e, -0.002f),
-                                        new Vector3(e, e, -0.002f), new Vector3(-e, e, -0.002f) });
+                // Rounded to follow the square's corners, a little outside them.
+                var outline = RoundedRect(0.53f, PatchCornerRadius + 0.03f, 6, -0.002f);
+                lr.positionCount = outline.Length;
+                lr.SetPositions(outline);
+                lr.numCornerVertices = 2;
                 lr.widthMultiplier = 0.0025f;
                 lr.sharedMaterial = frameMat;
                 lr.shadowCastingMode = ShadowCastingMode.Off;
@@ -568,9 +578,33 @@ namespace Cyclopea.EditorTools
             titleLegible.Head = center; titleLegible.TargetDmm = 18f; titleLegible.MaxWidthDeg = 24f;
             var statusLegible = session.Status.gameObject.AddComponent<LegibleText>();
             statusLegible.Head = center; statusLegible.TargetDmm = 16f; statusLegible.MaxWidthDeg = 30f;
+            // Words sit on soft dark panels: readable over any room, and they look like one product.
+            session.Title.gameObject.AddComponent<TextPanel>().Material = panelMat;
+            session.Status.gameObject.AddComponent<TextPanel>().Material = panelMat;
             session.Audio = game.AddComponent<AudioSource>();
             session.Audio.playOnAwake = false;
             session.Audio.spatialBlend = 0f;
+
+            // Sounds: Assets/Cyclopea/Audio (Tools/make_sounds.py). Missing files leave the slot empty (plain tones).
+            var sounds = game.AddComponent<SoundBank>();
+            FillSoundBank(sounds, report);
+            session.Sounds = sounds;
+
+            // The static's soft hiss, from the squares (spatialised, quiet, fades with the static).
+            var bedGo = new GameObject("StaticBed (Meta XR Audio)");
+            bedGo.transform.SetParent(game.transform, false);
+            var bed = bedGo.AddComponent<AudioSource>();
+            bed.playOnAwake = false;
+            bed.loop = true;
+            bed.volume = 0f;
+            bed.clip = sounds.StaticBed;
+            bed.spatialBlend = 1f;
+            bed.spatialize = true;
+            bed.rolloffMode = AudioRolloffMode.Logarithmic;
+            bed.minDistance = 0.4f; bed.maxDistance = 5f;
+            var bedMxa = bedGo.AddComponent<MetaXRAudioSource>();
+            bedMxa.EnableSpatialization = true;
+            session.Bed = bed;
 
             // The creature's voice: a spatialised source moved to where the creature floated.
             var voiceGo = new GameObject("CreatureVoice (Meta XR Audio)");
@@ -595,6 +629,7 @@ namespace Cyclopea.EditorTools
             creatures.Tips = tips;
             creatures.Patches = patches;
             creatures.Voice = creatureVoice;
+            creatures.Sounds = sounds;
             session.Creatures = creatures;
 
             // Reverb shaped like the player's own scanned room.
@@ -615,10 +650,16 @@ namespace Cyclopea.EditorTools
             var scores = game.AddComponent<ScoreAnchor>();
             scores.Session = session; scores.Head = center;
             scores.LineMaterial = frameMat;
+            scores.PanelMaterial = panelMat;
             // Home card: the daily Depth Check's hub, its buttons are the four squares (every input works).
             var home = game.AddComponent<HomeCard>();
             home.Session = session; home.Scores = scores; home.Dev = dev;
             session.Home = home;
+            // Each new kind moves onto a real surface from the room scan (beside the squares without one) and stays.
+            var colony = game.AddComponent<RoomColony>();
+            colony.Session = session; colony.Creatures = creatures; colony.Surface = finder;
+            colony.Head = center; colony.Material = creatureMat;
+            home.Room = colony;
             var platform = game.AddComponent<PlatformServices>();
             platform.Session = session; platform.Scores = scores;
             // Created on the dashboard Nov 4: first_creature, camouflage_round, streak_7 (simple, client
@@ -688,9 +729,54 @@ namespace Cyclopea.EditorTools
             tm.characterSize = charSize;
             tm.anchor = TextAnchor.MiddleCenter;
             tm.alignment = TextAlignment.Center;
-            tm.color = new Color(1f, 1f, 1f, 0.92f);
+            tm.color = new Color(1f, 0.97f, 0.92f, 0.95f);   // warm white, like the dots
             go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
             return tm;
+        }
+
+        /// <summary>Squares' corner radius (UV units of the 1×1 quad); the frames follow it.</summary>
+        const float PatchCornerRadius = 0.07f;
+
+        /// <summary>Closed rounded-square outline, half-extent <paramref name="e"/>, corner radius <paramref name="r"/>.</summary>
+        static Vector3[] RoundedRect(float e, float r, int segs, float z)
+        {
+            var pts = new List<Vector3>();
+            var corners = new[] { new Vector2(e - r, -e + r), new Vector2(e - r, e - r), new Vector2(-e + r, e - r), new Vector2(-e + r, -e + r) };
+            for (int c = 0; c < 4; c++)
+            {
+                float a0 = -90f + 90f * c;
+                for (int s = 0; s <= segs; s++)
+                {
+                    float a = (a0 + 90f * s / segs) * Mathf.Deg2Rad;
+                    pts.Add(new Vector3(corners[c].x + r * Mathf.Cos(a), corners[c].y + r * Mathf.Sin(a), z));
+                }
+            }
+            return pts.ToArray();
+        }
+
+        const string AudioDir = "Assets/Cyclopea/Audio";
+
+        static void FillSoundBank(SoundBank b, StringBuilder report)
+        {
+            int found = 0, missing = 0;
+            AudioClip Load(string name)
+            {
+                var c = AssetDatabase.LoadAssetAtPath<AudioClip>(AudioDir + "/" + name + ".wav");
+                if (c != null) found++; else missing++;
+                return c;
+            }
+            b.StaticBed = Load("static_bed");
+            b.PickRight = Load("pick_right"); b.PickWrong = Load("pick_wrong");
+            b.CreatureCondense = Load("creature_condense"); b.CreatureHop = Load("creature_hop");
+            b.CreatureDive = Load("creature_dive"); b.CreaturePeek = Load("creature_peek");
+            b.NewKind = Load("new_kind"); b.PersonalBest = Load("personal_best"); b.ScoreReveal = Load("score_reveal");
+            b.LevelUp = Load("level_up"); b.UiHover = Load("ui_hover"); b.UiSelect = Load("ui_select");
+            b.BreakChime = Load("break_chime"); b.EyeClose = Load("eye_close"); b.EyeOpen = Load("eye_open");
+            b.CatchHold = Load("catch_hold"); b.CatchSuccess = Load("catch_success");
+            var chirps = new List<AudioClip>();
+            for (int i = 1; i <= 4; i++) { var c = Load("creature_chirp_" + i); if (c != null) chirps.Add(c); }
+            b.CreatureChirps = chirps.ToArray();
+            report.AppendLine("Sounds: " + found + " loaded from " + AudioDir + (missing > 0 ? ", " + missing + " missing (plain tones)" : ""));
         }
 
         static Material MakeMaterial(string path, Shader shader, Action<Material> init)

@@ -22,6 +22,8 @@ namespace Cyclopea
         public float SideOffsetM = 0.24f;
         [Tooltip("Material for the graph lines (the frames' unlit material).")]
         public Material LineMaterial;
+        [Tooltip("Soft rounded panel behind the card's words (Cyclopea/RoundedPanel).")]
+        public Material PanelMaterial;
         public float GraphWidthM = 0.15f, GraphHeightM = 0.045f;
         public int GraphDays = 14;
 
@@ -122,7 +124,7 @@ namespace Cyclopea
             tm.characterSize = 0.001f;
             tm.anchor = TextAnchor.LowerCenter;
             tm.alignment = TextAlignment.Center;
-            tm.color = new Color(0.75f, 1f, 0.85f, 0.9f);
+            tm.color = new Color(1f, 0.97f, 0.92f, 0.95f);
             tm.fontStyle = Options.HighContrast ? FontStyle.Bold : FontStyle.Normal;
             tm.text = text;
             textGo.GetComponent<MeshRenderer>().sharedMaterial = font.material;
@@ -133,6 +135,7 @@ namespace Cyclopea
                 legible.TargetDmm = 16f;
                 legible.MaxWidthDeg = 24f;
             }
+            if (PanelMaterial != null) textGo.AddComponent<TextPanel>().Material = PanelMaterial;
             CardText = tm;
             BuildGraph(go.transform);
             return go;
