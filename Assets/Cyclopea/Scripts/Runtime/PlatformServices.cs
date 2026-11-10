@@ -23,13 +23,13 @@ namespace Cyclopea
 
         void OnEnable()
         {
-            if (Session != null) Session.Finished += OnFinished;
+            if (Session != null) { Session.Finished += OnFinished; Session.ArcadeFinished += OnArcadeFinished; }
             if (Scores != null) Scores.StreakUpdated += OnStreak;
         }
 
         void OnDisable()
         {
-            if (Session != null) Session.Finished -= OnFinished;
+            if (Session != null) { Session.Finished -= OnFinished; Session.ArcadeFinished -= OnArcadeFinished; }
             if (Scores != null) Scores.StreakUpdated -= OnStreak;
         }
 
@@ -51,6 +51,12 @@ namespace Cyclopea
 #else
             Status = "editor: platform off";
 #endif
+        }
+
+        void OnArcadeFinished(WhackRound.Result r)
+        {
+            if (!ready || !UseAchievements) return;
+            if (r.Caught > 0) Achievements.Unlock("first_creature");
         }
 
         void OnFinished(SpotSession.Result r)

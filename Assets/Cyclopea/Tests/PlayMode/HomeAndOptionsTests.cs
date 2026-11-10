@@ -44,6 +44,7 @@ namespace Cyclopea.PlayTests
         public IEnumerator Restore()
         {
             PlayerPrefs.DeleteKey(SpotSession.ProgressKey);
+            PlayerPrefs.DeleteKey(WhackRound.TotalKey); PlayerPrefs.DeleteKey(WhackRound.BestKey); PlayerPrefs.DeleteKey(WhackRound.LevelKey);
             PlayerPrefs.DeleteKey(SpotSession.CueKey);
             PlayerPrefs.DeleteKey(CreatureDirector.CollectionKey);
             Options.Reset();
@@ -83,13 +84,13 @@ namespace Cyclopea.PlayTests
             var s = Session();
             Assert.True(s.ShowingHome, "a player with history starts at the home card");
             Assert.False(s.AwaitingChoice);
-            StringAssert.Contains("Daily Depth Check", s.Title.text);
+            StringAssert.StartsWith("Cyclopea", s.Title.text);
             StringAssert.Contains("Best 180″ (Nov 2)", s.Title.text);
             StringAssert.Contains("Next: a Rare creature. They hide below 120″.", s.Title.text);
             Assert.That(s.Patches.All(p => p.Arcsec == 0 && !p.Decoy), "nothing hides behind a menu");
             Assert.That(s.Patches.All(p => p.Brightness < 0.5f), "the static fades behind the labels");
             var labels = s.Home.Labels;
-            Assert.That(labels.Select(l => l.text.Split('\n')[0]), Is.EqualTo(new[] { "Play", "One-eye", "Field guide", "Options" }));
+            Assert.That(labels.Select(l => l.text.Split('\n')[0]), Is.EqualTo(new[] { "Play", "Depth", "Field guide", "Options" }));
             Assert.That(labels.All(l => l.gameObject.activeSelf));
             StringAssert.Contains("4 of 16", labels[2].text);
             yield return null;
@@ -106,8 +107,10 @@ namespace Cyclopea.PlayTests
             s.Choose(0, "test");
             Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.Home), "any square goes back");
 
+            s.Choose(1, "test");
+            Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.Check), "Depth Check asks: two eyes or one");
             s.Choose(0, "test");
-            Assert.True(s.AwaitingChoice, "Play starts the Depth Check");
+            Assert.True(s.AwaitingChoice, "two eyes starts the measured Depth Check");
             Assert.That(s.Cue, Is.EqualTo(SessionLog.Cue.Stereo));
             Assert.That(s.Patches.All(p => p.Brightness == 1f), "full static again");
             Assert.That(s.Home.Labels.All(l => !l.gameObject.activeSelf), "labels gone");
@@ -155,7 +158,7 @@ namespace Cyclopea.PlayTests
 
             s.Choose(3, "test");
             Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.Home));
-            s.Choose(0, "test");
+            s.Choose(1, "test"); s.Choose(0, "test");   // Depth Check, two eyes
             Assert.True(s.AwaitingChoice);
             StringAssert.Contains("Look at it and hold", s.Title.text, "instructions follow the chosen input");
             Assert.That(s.Patches.Count(p => p.Arcsec > 0), Is.EqualTo(1));
@@ -180,7 +183,7 @@ namespace Cyclopea.PlayTests
             var s = Session();
             var dev = Object.FindFirstObjectByType<DevControls>();
             s.IdleAssistSeconds = 0.3f;
-            s.Choose(0, "test");
+            s.Choose(1, "test"); s.Choose(0, "test");   // Depth Check, two eyes
             Assert.True(s.AwaitingChoice);
             yield return null;
             Assert.False(dev.Dwell.enabled);
@@ -202,7 +205,7 @@ namespace Cyclopea.PlayTests
             s.LadderRungs = false;
             try
             {
-                s.Choose(0, "test");
+                s.Choose(1, "test"); s.Choose(0, "test");   // Depth Check, two eyes
                 int guard = 0;
                 while (s.CurrentDecoy < 0 && guard++ < 200)
                 {
@@ -248,7 +251,7 @@ namespace Cyclopea.PlayTests
             s.DecoyChance = 0f;
             try
             {
-                s.Choose(0, "test");
+                s.Choose(1, "test"); s.Choose(0, "test");   // Depth Check, two eyes
                 yield return Play(s, x => x.CurrentTarget);   // sees everything: down to the display floor
                 Assert.True(s.IsDone);
                 StringAssert.Contains("New personal best!", s.Title.text);

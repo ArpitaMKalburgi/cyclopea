@@ -548,6 +548,13 @@ namespace Cyclopea.EditorTools
             var handRay = game.AddComponent<HandRaySelector>();
             handRay.LeftHand = left; handRay.RightHand = right;
             handRay.LeftRay = rays[0]; handRay.RightRay = rays[1];
+            // Controllers in hand: point and pull the trigger. Nobody is stuck because they kept them.
+            var padRays = new[] { MakeRay("LeftControllerRay", frameMat, game.transform), MakeRay("RightControllerRay", frameMat, game.transform) };
+            var pads = game.AddComponent<ControllerSelector>();
+            Transform track = center.parent;
+            pads.LeftAnchor = track.Find("LeftHandAnchor/LeftControllerAnchor") ?? track.Find("LeftHandAnchor");
+            pads.RightAnchor = track.Find("RightHandAnchor/RightControllerAnchor") ?? track.Find("RightHandAnchor");
+            pads.LeftRay = padRays[0]; pads.RightRay = padRays[1];
             var dwell = game.AddComponent<HeadDwellSelector>();
             dwell.Head = center;
             dwell.enabled = false;
@@ -556,7 +563,37 @@ namespace Cyclopea.EditorTools
             keys.Cam = cam;
             AddGazeInteractor(game.transform, center, left, right);
             var isdk = game.AddComponent<IsdkSelector>();
-            isdk.Patches = isdkEvents;
+            // Critter Whack: nine smaller tiles of the same static in a 3x3 grid on the same spot. Hidden
+            // until a round starts; the four squares step aside while it runs.
+            var tiles = new StereoPatch[9];
+            var tileFrames = new LineRenderer[9];
+            var tileEvents = new IsdkPatchEvents[9];
+            for (int i = 0; i < 9; i++)
+            {
+                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                q.name = "Tile" + (i + 1);
+                q.transform.SetParent(game.transform, false);
+                q.GetComponent<MeshRenderer>().sharedMaterial = rds;
+                q.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+                tiles[i] = q.AddComponent<StereoPatch>();
+                tiles[i].Index = 10 + i;
+                tiles[i].Head = center;
+                tileEvents[i] = AddInteractables(tiles[i]);
+                var frameGo = new GameObject("Frame");
+                frameGo.transform.SetParent(q.transform, false);
+                var lr = frameGo.AddComponent<LineRenderer>();
+                lr.useWorldSpace = false;
+                lr.loop = true;
+                var outline = RoundedRect(0.53f, PatchCornerRadius + 0.03f, 6, -0.002f);
+                lr.positionCount = outline.Length;
+                lr.SetPositions(outline);
+                lr.numCornerVertices = 2;
+                lr.widthMultiplier = 0.002f;
+                lr.sharedMaterial = frameMat;
+                lr.shadowCastingMode = ShadowCastingMode.Off;
+                tileFrames[i] = lr;
+            }
+            isdk.Patches = isdkEvents.Concat(tileEvents).ToArray();
             var micro = game.AddComponent<MicrogestureSelector>();
             micro.Left = leftGestures; micro.Right = rightGestures; micro.Patches = patches;
 
@@ -567,7 +604,9 @@ namespace Cyclopea.EditorTools
             session.Frames = frames;
             var voice = game.AddComponent<VoiceSelector>();
             voice.Patches = patches; voice.Session = session;
-            session.Selectors = new PatchSelector[] { isdk, handRay, dwell, micro, voice, keys };
+            var slap = game.AddComponent<SlapSelector>();
+            slap.Targets = tiles;
+            session.Selectors = new PatchSelector[] { isdk, handRay, pads, slap, dwell, micro, voice, keys };
             session.Title = MakeText("Title", game.transform, 0.0011f, 72);
             session.Status = MakeText("Status", game.transform, 0.001f, 56);
             // Grow upward from where they are placed, so a longer block never sinks into the desk.
@@ -631,6 +670,11 @@ namespace Cyclopea.EditorTools
             creatures.Voice = creatureVoice;
             creatures.Sounds = sounds;
             session.Creatures = creatures;
+            slap.Tips = tips;
+            var whack = game.AddComponent<WhackRound>();
+            whack.Session = session; whack.Tiles = tiles; whack.Frames = tileFrames;
+            whack.Creatures = creatures; whack.Sounds = sounds; whack.Audio = session.Audio;
+            session.Arcade = whack;
 
             // Reverb shaped like the player's own scanned room.
             var roomGo = new GameObject("RoomAcoustics (Meta XR Audio + MRUK)");
@@ -649,6 +693,7 @@ namespace Cyclopea.EditorTools
             camo.Session = session; camo.CameraAccess = cameraAccess;
             var scores = game.AddComponent<ScoreAnchor>();
             scores.Session = session; scores.Head = center;
+            session.Scores = scores;
             scores.LineMaterial = frameMat;
             scores.PanelMaterial = panelMat;
             // Home card: the daily Depth Check's hub, its buttons are the four squares (every input works).
@@ -666,6 +711,10 @@ namespace Cyclopea.EditorTools
             // authoritative) and the days_in_a_row leaderboard (higher is better, not user facing).
             // Every call fails quietly until the Data Use Checkup is approved, so on is safe.
             platform.UseAchievements = true; platform.UseLeaderboard = true;
+            // Nothing fails in silence: the two-eye view, head tracking and frame rate are checked every
+            // frame (a fault stops rounds counting), and every fallback is named to the player and the log.
+            var check = game.AddComponent<SystemCheck>();
+            check.Session = session; check.Surface = finder; check.Sounds = sounds; check.Platform = platform; check.Scores = scores;
             var tuning = game.AddComponent<TuningPanel>();
             tuning.Session = session; tuning.Mood = mood; tuning.Camouflage = camo; tuning.Scores = scores;
             tuning.Platform = platform; tuning.Surface = finder; tuning.Acoustics = roomAcoustics;
@@ -673,7 +722,7 @@ namespace Cyclopea.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             report.AppendLine("Scene: " + ScenePath + " (rig, passthrough underlay, hands, ISDK rig + gaze, microgestures, MRUK, " +
-                              "depth raycast, passthrough camera, 4 patches, session, creatures + fingertips, anchor, home card, platform, tuning)");
+                              "depth raycast, passthrough camera, 4 patches, session, creatures + fingertips, anchor, home card, platform, system check, tuning)");
         }
 
         static OVRHand MakeHand(GameObject prefab, Transform anchor, bool isLeft)

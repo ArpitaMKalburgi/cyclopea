@@ -36,7 +36,7 @@ namespace Cyclopea.Core
         readonly List<RungConfig> rungs;
         readonly Dictionary<Rung, Staircase> stairs = new Dictionary<Rung, Staircase>();
         int index;
-        int spotMissesAtCeiling;
+        int spotMissesAtCeiling, spotTrialsAtCeiling;
 
         public const int CeilingMissesForNoStereo = 6;
 
@@ -46,13 +46,16 @@ namespace Cyclopea.Core
             foreach (var r in rungs) stairs[r.Rung] = new Staircase(r.Stair);
         }
 
+        /// <summary>The Spot rung exactly as the game plays it (the benchmark runs this same config).</summary>
+        public static RungConfig SpotRung(double floorArcsec) => new RungConfig
+        {
+            Rung = Rung.Spot, Alternatives = 4,
+            Stair = new Staircase.Config { StartArcsec = 1920, FloorArcsec = floorArcsec }
+        };
+
         public static IEnumerable<RungConfig> Default(double floorArcsec)
         {
-            yield return new RungConfig
-            {
-                Rung = Rung.Spot, Alternatives = 4,
-                Stair = new Staircase.Config { StartArcsec = 1920, FloorArcsec = floorArcsec }
-            };
+            yield return SpotRung(floorArcsec);
             yield return new RungConfig
             {
                 Rung = Rung.Sort, Alternatives = 2,
@@ -87,11 +90,14 @@ namespace Cyclopea.Core
 
             // No-stereo detector: repeated misses at the ceiling on Spot means the player cannot
             // see disparity at all; stop measuring and hand over to the parallax scaffold.
-            if (CurrentRung == Rung.Spot && !correct &&
-                stair.CurrentArcsec >= stair.Config_CeilingArcsec() - 1e-6)
+            // It needs a miss rate as well as a count: a player who sees depth but lapses now and then
+            // also misses at the ceiling sometimes, but hits it far more often than they miss.
+            bool atCeiling = CurrentRung == Rung.Spot && stair.CurrentArcsec >= stair.Config_CeilingArcsec() - 1e-6;
+            if (atCeiling) spotTrialsAtCeiling++;
+            if (atCeiling && !correct)
             {
                 spotMissesAtCeiling++;
-                if (spotMissesAtCeiling >= CeilingMissesForNoStereo)
+                if (NoStereoDetected)
                 {
                     index = rungs.Count; // finish the ladder; profile reports StereoMeasured = false
                     return;
@@ -114,11 +120,18 @@ namespace Cyclopea.Core
                 index++;
         }
 
+        /// <summary>The staircase of one rung (whether or not it has run).</summary>
+        public Staircase StaircaseOf(Rung rung) => stairs[rung];
+
+        /// <summary>True once the no-stereo detector has fired on Spot.</summary>
+        public bool NoStereoDetected => spotMissesAtCeiling >= CeilingMissesForNoStereo &&
+                                        spotMissesAtCeiling * 2 >= spotTrialsAtCeiling;
+
         public bool Has(Rung rung) => rungs.Exists(r => r.Rung == rung && r.Enabled);
 
         public Profile BuildProfile()
         {
-            var p = new Profile { StereoMeasured = spotMissesAtCeiling < CeilingMissesForNoStereo };
+            var p = new Profile { StereoMeasured = !NoStereoDetected };
             foreach (var r in rungs)
             {
                 var s = stairs[r.Rung];

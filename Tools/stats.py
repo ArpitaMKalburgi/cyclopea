@@ -35,7 +35,14 @@ def load(paths):
                     if not line:
                         continue
                     o = json.loads(line)
-                    (trials if o.get("type") == "trial" else summaries).append(o)
+                    kind = o.get("type")
+                    if kind == "health":
+                        continue  # system state lines: read by device_e2e.py, not part of the statistics
+                    if kind == "trial" and o.get("clean") is False:
+                        continue  # a health fault touched it; the game did not count it either
+                    if kind == "summary" and o.get("outcome") == "Uncertain":
+                        continue  # the game said "not sure": no score, so no test-retest pair
+                    (trials if kind == "trial" else summaries).append(o)
     return trials, summaries
 
 

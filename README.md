@@ -90,12 +90,16 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Per-eye shift, production shader through URP | within 0.008 px rms of commanded, from 47.7 px down to 0.1 px |
 | Eyes identical outside the creature | mean abs difference 0.0000 |
 | One eye alone, privileged observer told the outline | 19.5–29.2 % in 4-choice trials (chance 25 %), 40 images per condition |
-| Unit tests in Unity | 66 / 66 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still, progress across days, goals) |
-| Tests in the real scene | 24 / 24 |
+| Unit tests in Unity | 76 / 76 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still, progress across days, goals) |
+| Tests in the real scene | 32 / 32 |
 | Scene wiring | every square is an ISDK ray + gaze target; no missing scripts; all input modes wired |
 | Whole session in the real scene, simulated 60″ observer | Spot completes with a Depth Score of 93″ (56 trials, 4 of them decoy checks; 83–93″ across runs, the session's random draws differ); goes on to Sort (81″) and Catch (10 of 11); fakes ignored 4 of 4; one log summary per rung |
 | Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°); Meta XR Audio room model fits every room |
 | Random-guessing player | gets the honest "no stereo measured" card, no number; the next pinch starts motion mode |
+| Known-answer benchmark (`Tools/benchmark.md`) | 6,000 simulated players with true thresholds we set, through the game's own ladder and verdict code: 0 of 1,000 with no two-eye depth given a number; 6 of 4,000 with depth told they have none (0.15 %); steady players scored within ×1.58 of the truth 99.8 % of the time, and the ± range shown with each score held the truth 94 % of the time; distraction makes a score coarser, almost never finer (2 of 3,144) |
+| Four honest outcomes | a score with its ± range, "≤ 15″" (finer than the display), "no depth from two eyes", or "not sure this time" with the reason (answers scattered, easy ones missed, view disturbed); "not sure" never counts as a score and never leads to the one-eye version |
+| Silent failures made visible (`SystemCheck`) | every frame: two views drawn from two eye positions 40–85 mm apart (read from the XR display), head tracked, under a quarter of frames late; a fault stops the rounds it touches from counting, says "That one didn't count: …", and after 8 in a row ends with "Couldn't measure: …". Room scan, passthrough, sounds, Meta account, desk card and saving report as ok or a named fallback, on the home card when it matters, on the Options page as "Checks:", in logcat and in every session log |
+| Broken two-eye view, in the real scene | both eyes given one picture: 0 rounds counted, "Not sure this time / Couldn't measure: your two eyes got the same picture", never "no depth" (the benchmark's counterfactual without the check: 500 of 500 told "no depth") |
 | Found creatures | the creature comes out exactly where it was seen floating (on the sightline, at the height the disparity showed) and, seen from the eyes, covers the exact outline hidden in the square (checked in UV against the shader's mask), never blocks a pick (no colliders), rides a fingertip, settles in a nest of at most 5; rarity follows the disparity it was found at; field guide persists; tutorial runs end to end with and without a hand |
 | Sort and Catch | Sort shows two creatures and only those two squares are answers; Catch holds a creature at a fixed height, a simulated fingertip held still on it catches it (and it climbs on), held 8 cm too high gets "It floated lower than that."; no hands: Catch is skipped, not failed. Closed forms for where a shift is seen checked against a two-ray intersection |
 | Home card and options | a returning player opens on the home card (streak, "Best 180″ (Nov 2)", "Next: a Rare creature. They hide below 120″."); the squares are Play / one-eye mode / Field guide / Options; high contrast makes the static black and white, frames bolder, text bold, room darker; look and hold becomes the input and the instructions say "Look at it and hold"; less movement skips Catch; all three survive a relaunch |
@@ -108,7 +112,7 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Dev APK | builds clean, 105 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
 | Judge APK (release) | builds clean, 76 MB; permissions: hand tracking, scene, anchors, headset camera, internet (Platform SDK). No screen capture (XR Operator stripped), no billing |
 
-What only the headset can answer: that multiview delivers each eye its own image (eye-tint check), the pop direction, frame rate, and the human one-eye control. See `DEVICE-DAY.md`.
+What only the headset can answer: that multiview delivers each eye its own image (eye-tint check), the pop direction, frame rate, and the human one-eye control. See `DEVICE-DAY.md`. `Tools/device_e2e.py` also fails the run if the game's own health check reports anything but an ok two-eye view and head tracking.
 
 ## Policy note
 

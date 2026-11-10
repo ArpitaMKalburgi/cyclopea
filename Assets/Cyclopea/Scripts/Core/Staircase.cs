@@ -154,6 +154,28 @@ namespace Cyclopea.Core
             return DisparityMath.Pow10(sum / n);
         }
 
+        /// <summary>
+        /// Spread (standard deviation, log10 units) of the reversals the estimate averages. A steady
+        /// player's reversals sit close together; a distracted one's scatter. NaN with fewer than two.
+        /// </summary>
+        public double ThresholdSpreadLog()
+        {
+            if (reversalLogs.Count < 2) return double.NaN;
+            int n = Math.Min(cfg.ReversalsForThreshold, reversalLogs.Count);
+            double mean = 0;
+            for (int i = reversalLogs.Count - n; i < reversalLogs.Count; i++) mean += reversalLogs[i];
+            mean /= n;
+            double ss = 0;
+            for (int i = reversalLogs.Count - n; i < reversalLogs.Count; i++) ss += (reversalLogs[i] - mean) * (reversalLogs[i] - mean);
+            return Math.Sqrt(ss / (n - 1));
+        }
+
+        /// <summary>How many reversals the estimate averages (the last N).</summary>
+        public int ThresholdReversals => Math.Min(cfg.ReversalsForThreshold, reversalLogs.Count);
+
+        /// <summary>True if the run ended because it reached its trial cap, not because it settled.</summary>
+        public bool HitTrialCap => !floorExit && Reversals < cfg.ReversalsToStop && Trials >= cfg.MaxTrials;
+
         /// <summary>True when the estimate sits on the display floor — report as "≤ floor", not as a number.</summary>
         public bool AtFloor()
         {

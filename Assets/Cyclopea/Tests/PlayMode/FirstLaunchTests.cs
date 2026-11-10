@@ -20,6 +20,7 @@ namespace Cyclopea.PlayTests
             PlayerPrefs.DeleteKey(SpotSession.TutorialKey);
             PlayerPrefs.DeleteKey(CreatureDirector.CollectionKey);
             PlayerPrefs.DeleteKey(SpotSession.ProgressKey);
+            PlayerPrefs.DeleteKey(WhackRound.TotalKey); PlayerPrefs.DeleteKey(WhackRound.BestKey); PlayerPrefs.DeleteKey(WhackRound.LevelKey);
             Options.Reset();
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
@@ -102,8 +103,9 @@ namespace Cyclopea.PlayTests
                 Assert.That(d.Collection.Total, Is.EqualTo(1), "found: the first creature is collected");
                 StringAssert.Contains("You found it", s.Title.text);
                 t0 = Time.time;
-                while (!s.AwaitingChoice && Time.time - t0 < 2f) yield return null;
-                Assert.True(s.AwaitingChoice, "round 1 starts on its own");
+                while (!s.InArcade && Time.time - t0 < 2f) yield return null;
+                Assert.True(s.InArcade, "the first round of Critter Whack starts on its own");
+                s.Arcade.Abort();
                 Assert.That(PlayerPrefs.GetInt(SpotSession.TutorialKey, 0), Is.EqualTo(1), "tutorial only once");
             }
             finally
@@ -144,16 +146,17 @@ namespace Cyclopea.PlayTests
             float t0 = Time.time;
             while (Time.time - t0 < 2f && !dev.Autoplaying) yield return null;
             Assert.True(dev.Autoplaying, "the remote command started autoplay");
-            while (dev.Autoplaying && Time.time - t0 < 240f)
+            while (dev.Autoplaying && Time.time - t0 < 360f)
             {
                 if (s.ShowingTutorial) seen.Add("tutorial");
+                if (s.InArcade) seen.Add("arcade");
                 if (s.AwaitingChoice) seen.Add("trial " + s.CurrentRung);
                 if (s.IsDone) seen.Add("done");
                 yield return null;
             }
             StringAssert.StartsWith("complete", dev.LastAutoplayStop, "stopped because: " + dev.LastAutoplayStop);
             Assert.True(s.ShowingHome, "ends on the home card");
-            foreach (var need in new[] { "tutorial", "trial Spot", "done" })
+            foreach (var need in new[] { "tutorial", "arcade", "trial Spot", "done" })
                 Assert.That(seen, Does.Contain(need), "went through " + need);
             Assert.That(PlayerPrefs.GetInt(SpotSession.NoticeKey, 0), Is.EqualTo(1));
             Debug.Log("[Cyclopea test] autoplay saw: " + string.Join(", ", seen) + " in " + (Time.time - t0).ToString("0") + " s");

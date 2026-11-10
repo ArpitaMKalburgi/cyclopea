@@ -82,14 +82,14 @@ namespace Cyclopea
         void OnEnable()
         {
             if (Creatures != null) Creatures.Collected += OnCollected;
-            if (Session != null) Session.Finished += OnFinished;
+            if (Session != null) { Session.Finished += OnFinished; Session.ArcadeFinished += OnArcadeFinished; }
             if (Surface != null) Surface.SurfaceChanged += OnSurfaceChanged;
         }
 
         void OnDisable()
         {
             if (Creatures != null) Creatures.Collected -= OnCollected;
-            if (Session != null) Session.Finished -= OnFinished;
+            if (Session != null) { Session.Finished -= OnFinished; Session.ArcadeFinished -= OnArcadeFinished; }
             if (Surface != null) Surface.SurfaceChanged -= OnSurfaceChanged;
         }
 
@@ -154,6 +154,7 @@ namespace Cyclopea
         }
 
         void OnFinished(SpotSession.Result result) => MoveInNow();
+        void OnArcadeFinished(WhackRound.Result result) => MoveInNow();
 
         /// <summary>Every waiting new kind moves in now (what the score card does; tests call it directly).</summary>
         public void MoveInNow()

@@ -26,6 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent
 PKG = "com.ujwal240.cyclopea"
 ADB = os.environ.get("ADB", r"C:\Unity\Editors\6000.0.85f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe")
 METAVR = shutil.which("metavr") or "metavr"
+# Git Bash, not the WSL bash that Windows may find first (it cannot read a Windows path).
+GITBASH = next((b for b in ("C:/Program Files/Git/bin/bash.exe", "C:/Program Files (x86)/Git/bin/bash.exe") if os.path.exists(b)), "bash")
 REMOTE = f"/sdcard/Android/data/{PKG}/files/remote.txt"
 
 
@@ -111,7 +113,7 @@ def main():
 
     if not a.no_eyes:
         print("Per-eye check: if the headset shows a screen-capture prompt, accept it (once per boot).", flush=True)
-        subprocess.run(["bash", str(ROOT / "Tools" / "quest.sh"), "operator"], cwd=ROOT, timeout=120)
+        subprocess.run([GITBASH, "Tools/quest.sh", "operator"], cwd=ROOT, timeout=120)
         remote("tint=1")
         time.sleep(2)
         p = run([sys.executable, "-I", str(ROOT / "Tools" / "operator_eyes.py"), "--metavr", METAVR,
@@ -149,7 +151,7 @@ def main():
     (out / "autoplay.txt").write_text("\n".join(steps), encoding="utf-8")
     stop = next((s for s in reversed(steps) if s.startswith("stop")), "no stop line")
     note(done and "complete" in stop, f"autoplay reaches the home card after a scored session ({stop})")
-    for need in ("notice", "tutorial", "tutorial-wink-1", "tutorial-wink-2", "trial Spot", "done", "home"):
+    for need in ("notice", "tutorial", "tutorial-wink-1", "tutorial-wink-2", "arcade", "home", "check", "trial Spot", "done"):
         note(any(k.startswith(need) for k in seen) or any(f"state {need}" in s for s in steps), f"screen reached: {need}")
     for opt in ("trial Sort", "trial Catch"):
         if any(k.startswith(opt) for k in seen):
@@ -174,6 +176,23 @@ def main():
         note(low >= 60, f"frame rate: median {sorted(fps)[len(fps) // 2]} fps, 5th percentile {low} fps over {len(fps)} s (need >= 60)")
     else:
         note(False, "frame rate: no VrApi FPS lines found")
+
+    # Silent failures made visible: the game's own health check, read from its log.
+    game_log = "\n".join(mine)
+    health = {}
+    for m in re.finditer(r"\[Cyclopea\] health ([^:]+): (Ok|Fallback|Fault)(?: \(([^)]*)\))?", game_log):
+        health[m.group(1)] = (m.group(2), m.group(3) or "")
+    view = health.get("Two-eye view", ("missing", ""))
+    note(view[0] == "Ok", f"health: two-eye view {view[0]} ({view[1]})")
+    head = health.get("Head tracking", ("missing", ""))
+    note(head[0] == "Ok", f"health: head tracking {head[0]}")
+    faults = re.findall(r"\[Cyclopea\] health ([^:]+): Fault \(([^)]*)\)", game_log)
+    note(not faults, "health: no critical faults during the run" + (f": {faults[:5]}" if faults else ""))
+    for part, (lvl, det) in sorted(health.items()):
+        if lvl != "Ok":
+            report.append(f"|  | {part}: {lvl} ({det}) |")
+    verdicts = re.findall(r"\[Cyclopea\] verdict ([^\r\n]+)", game_log)
+    note(any(v.startswith(("Measured", "AtFloor")) for v in verdicts), f"verdict: {verdicts[-1] if verdicts else 'none logged'}")
 
     sessions = out / "sessions"
     sessions.mkdir(exist_ok=True)

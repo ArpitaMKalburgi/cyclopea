@@ -25,7 +25,8 @@ namespace Cyclopea.PlayTests
             PlayerPrefs.SetInt(SpotSession.NoticeKey, 1);   // these tests start past the first-launch notice
             PlayerPrefs.SetInt(SpotSession.TutorialKey, 1); // ...and past the tutorial creature
             PlayerPrefs.DeleteKey(CreatureDirector.CollectionKey);
-            PlayerPrefs.DeleteKey(SpotSession.ProgressKey);  // ...and with no history, so play starts at once (no home card)
+            PlayerPrefs.DeleteKey(SpotSession.ProgressKey);
+            PlayerPrefs.DeleteKey(WhackRound.TotalKey); PlayerPrefs.DeleteKey(WhackRound.BestKey); PlayerPrefs.DeleteKey(WhackRound.LevelKey);  // ...and with no history, so play starts at once (no home card)
             PlayerPrefs.DeleteKey(SpotSession.CueKey);
             Options.Reset();
 #if UNITY_EDITOR

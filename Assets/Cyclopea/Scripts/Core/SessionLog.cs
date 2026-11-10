@@ -37,6 +37,8 @@ namespace Cyclopea.Core
             public string Rung = "Spot";      // Spot / Sort / Catch (SkillLadder.Rung)
             public double HeightM = double.NaN;      // Catch: how high the creature was held above the surface
             public double DepthErrorM = double.NaN;  // Catch: fingertip height minus that (NaN when the square was wrong)
+            public bool Clean = true;         // false: a health fault touched this trial, so it was not counted
+            public string Fault = "";         // ...and what it was
         }
 
         public sealed class Summary
@@ -52,6 +54,10 @@ namespace Cyclopea.Core
             public EyeCondition Eyes;
             public Cue Cue;
             public string Rung = "Spot";
+            public string Outcome = "";       // Verdict: Measured / AtFloor / NoDepth / Uncertain
+            public double PlusMinusPercent = double.NaN;
+            public double FittedLapse = double.NaN;
+            public int DirtyTrials;           // trials not counted because a health fault touched them
         }
 
         readonly List<string> lines = new List<string>();
@@ -76,6 +82,7 @@ namespace Cyclopea.Core
             S("phase", t.Phase) + "," +
             S("cue", t.Cue.ToString()) + "," +
             S("rung", t.Rung) +
+            (t.Clean ? "" : "," + B("clean", false) + "," + S("fault", t.Fault)) +
             (double.IsNaN(t.HeightM) ? "" : "," + N("height_m", t.HeightM)) +
             (double.IsNaN(t.DepthErrorM) ? "" : "," + N("depth_err_m", t.DepthErrorM)) +
             "}");
@@ -94,6 +101,21 @@ namespace Cyclopea.Core
             S("eyes", s.Eyes.ToString()) + "," +
             S("cue", s.Cue.ToString()) + "," +
             S("rung", s.Rung) +
+            (s.Outcome.Length > 0 ? "," + S("outcome", s.Outcome) : "") +
+            (double.IsNaN(s.PlusMinusPercent) ? "" : "," + N("plus_minus_pct", s.PlusMinusPercent)) +
+            (double.IsNaN(s.FittedLapse) ? "" : "," + N("fitted_lapse", s.FittedLapse)) +
+            (s.DirtyTrials > 0 ? "," + N("dirty_trials", s.DirtyTrials) : "") +
+            "}");
+
+        /// <summary>A health change during the session (part, level, detail), so a log shows what the system was doing.</summary>
+        public void AddHealth(string sessionId, DateTime utc, string part, string level, string detail) => lines.Add(
+            "{" +
+            S("type", "health") + "," +
+            S("session", sessionId) + "," +
+            S("utc", utc.ToString("o", CultureInfo.InvariantCulture)) + "," +
+            S("part", part) + "," +
+            S("level", level) + "," +
+            S("detail", detail) +
             "}");
 
         public string ToJsonLines()

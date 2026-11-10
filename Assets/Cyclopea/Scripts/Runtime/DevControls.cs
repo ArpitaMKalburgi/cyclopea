@@ -163,7 +163,8 @@ namespace Cyclopea
         System.Random autoRng;
         float autoNext, autoDoneAt;
         string autoLast = "";
-        int autoSteps;
+        int autoSteps, autoDones;
+        readonly System.Collections.Generic.List<int> autoUp = new System.Collections.Generic.List<int>();
 
         public bool Autoplaying => autoObserver != null;
         /// <summary>Why the last autoplay stopped ("complete: ..." when it reached the home card after a score).</summary>
@@ -179,6 +180,7 @@ namespace Cyclopea
             autoDoneAt = -1f;
             autoLast = "";
             autoSteps = 0;
+            autoDones = 0;
             Say("Remote: autoplay " + arcsec + "″");
             AutoLog("start, a player who sees " + arcsec + "″");
         }
@@ -200,8 +202,9 @@ namespace Cyclopea
                                    : s.TutorialWinkBeat >= 0 && s.TutorialWinkBeat < 3 ? "tutorial-wink-" + s.TutorialWinkBeat
                                    : "tutorial-hidden")
             : s.OnBreak ? "break"
+            : s.InArcade ? "arcade"
             : s.IntroducingRung ? "rung-intro"
-            : s.ShowingHome ? "home"
+            : s.ShowingHome ? (s.Home != null && s.Home.Current == HomeCard.Page.Check ? "check" : "home")
             : s.IsDone ? "done"
             : s.AwaitingChoice ? "trial " + s.CurrentRung
             : "busy";
@@ -228,11 +231,29 @@ namespace Cyclopea
                 case "break": s.Choose(0, "autoplay"); autoSteps++; break;
                 case "done":
                     if (autoDoneAt < 0) { autoDoneAt = Time.time; AutoLog("score card | " + (s.Title != null ? s.Title.text.Replace("\n", " / ") : "")); }
-                    else if (Time.time - autoDoneAt > Mathf.Max(0.5f, 6f * AutoplayStepSeconds)) { s.Choose(1, "autoplay"); autoSteps++; }
+                    else if (Time.time - autoDoneAt > Mathf.Max(0.5f, 6f * AutoplayStepSeconds))
+                    {
+                        s.Choose(1, "autoplay"); autoSteps++;
+                        autoDones++; autoDoneAt = -1f;
+                    }
                     break;
                 case "home":
-                    if (autoDoneAt >= 0) StopAutoplay("complete: home card after a scored session");
-                    else { s.Choose(0, "autoplay"); autoSteps++; }                // a returning player: Play
+                    // First an arcade round (Play), then a two-eye Depth Check, then stop.
+                    if (autoDones >= 2) StopAutoplay("complete: home card after an arcade round and a Depth Check");
+                    else { s.Choose(autoDones == 0 ? 0 : 1, "autoplay"); autoSteps++; }
+                    break;
+                case "check": s.Choose(0, "autoplay"); autoSteps++; break;   // two eyes
+                case "arcade":
+                    if (s.Arcade == null || !s.Arcade.Playing) break;
+                    s.Arcade.RealUp(autoUp);
+                    if (autoUp.Count == 0) break;
+                    autoSteps++;
+                    double lvl = s.Arcade.LevelArcsec;
+                    if (autoObserver.Respond(lvl))
+                    {
+                        AutoLog("whack tile " + autoUp[0] + " at " + lvl.ToString("0") + "″, score " + s.Arcade.Score);
+                        s.Arcade.Whack(s.Arcade.Tiles[autoUp[0]], "autoplay");
+                    }
                     break;
                 default:
                     if (!s.AwaitingChoice) break;

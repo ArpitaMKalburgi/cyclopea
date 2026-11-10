@@ -47,6 +47,14 @@ namespace Cyclopea
         public CreatureDirector Creatures;
         [Tooltip("The daily home card: streak, best, next goal; the squares become Play / mode / Field guide / Options.")]
         public HomeCard Home;
+        [Tooltip("Critter Whack, the main game: Play on the home card, and the first round after the tutorial.")]
+        public WhackRound Arcade;
+        [Tooltip("Counts a played day for the streak after an arcade round.")]
+        public ScoreAnchor Scores;
+
+        /// <summary>An arcade round ended (room colony, platform and streak listen).</summary>
+        public event Action<WhackRound.Result> ArcadeFinished;
+        public bool InArcade => state == State.Arcade;
         [Tooltip("All game sounds (Assets/Cyclopea/Audio). Empty slots fall back to plain tones.")]
         public SoundBank Sounds;
         [Tooltip("Looping, spatialised: the static's soft hiss, from the squares, while there is static to search.")]
@@ -105,7 +113,7 @@ namespace Cyclopea
         public static readonly Color FrameWrong = new Color(1f, 0.55f, 0.08f, 1f);
         public const float RightFrameWidth = 2.4f;
 
-        enum State { Intro, Tutorial, Trial, Feedback, Done, Break, RungIntro, Home }
+        enum State { Intro, Tutorial, Trial, Feedback, Done, Break, RungIntro, Home, Arcade }
 
         /// <summary>What a finished session produced; other systems (score anchor, camouflage, platform) listen for it.</summary>
         public struct Result
@@ -127,7 +135,14 @@ namespace Cyclopea
         /// (and a headset whose per-eye rendering failed) still get the game and a score.
         /// </summary>
         public SessionLog.Cue Cue { get; private set; } = SessionLog.Cue.Stereo;
-        bool lastMeasured = true;
+        bool lastMeasured = true;   // false only after a "no depth" verdict: the next pinch starts motion mode
+
+        // Health gate: rounds a critical fault touched are shown but never counted (see SystemCheck).
+        TrialGate gate = new TrialGate();
+        readonly List<double> spotLevels = new List<double>();
+        readonly List<bool> spotCorrect = new List<bool>();
+        public Verdict LastVerdict { get; private set; }
+        public TrialGate Gate => gate;
 
         /// <summary>Switch cue and start a new session with it.</summary>
         public void StartCue(SessionLog.Cue cue)
@@ -215,6 +230,14 @@ namespace Cyclopea
             OVRManager.HMDUnmounted += OnUnmounted;
             OVRManager.HMDMounted += OnMounted;
             if (Creatures != null) Creatures.Collected += OnCollected;
+            Health.Changed += OnHealth;
+            if (Arcade != null) Arcade.Finished += OnArcadeFinished;
+        }
+
+        void OnHealth(Health.Entry e)
+        {
+            if (log == null) return;
+            log.AddHealth(sessionId, DateTime.UtcNow, e.Part, e.Level.ToString(), e.Detail);
         }
 
         void OnDisable()
@@ -226,6 +249,8 @@ namespace Cyclopea
             OVRManager.HMDUnmounted -= OnUnmounted;
             OVRManager.HMDMounted -= OnMounted;
             if (Creatures != null) Creatures.Collected -= OnCollected;
+            Health.Changed -= OnHealth;
+            if (Arcade != null) Arcade.Finished -= OnArcadeFinished;
         }
 
         void OnCollected(Core.Creatures.Species s, Core.Creatures.Rarity r, bool isNew)
@@ -255,7 +280,9 @@ namespace Cyclopea
             if (Title != null)
             {
                 if (titleCharSize > 0) Title.characterSize = titleCharSize;
-                Title.text = "Something lives in this static.\nHold out a finger.";
+                Title.text = ControllerSelector.InUse
+                    ? "Something lives in this static.\nPut your controllers down,\nthen hold out a finger."
+                    : "Something lives in this static.\nHold out a finger.";
             }
             Toast("", 0f);
             if (Creatures != null) Creatures.IntroBegin(Patches[target], OnTutorialDived);
@@ -318,7 +345,8 @@ namespace Cyclopea
                 chosen = p.Index;
                 if (Creatures != null) Creatures.Reveal(p, 1920, 1920, true);
                 PlayAtCreature(clipRight, p, 1920);
-                if (Title != null) Title.text = "You found it!\nMore are hiding, and they get harder to see.";
+                if (Title != null) Title.text = Arcade != null ? "You found it!\nNow catch as many as you can."
+                                                               : "You found it!\nMore are hiding, and they get harder to see.";
                 stateUntil = Time.time + TutorialRewardSeconds;
             }
             else
@@ -382,6 +410,45 @@ namespace Cyclopea
         // From the second launch on (and after each score card): streak, best, next goal; the squares are buttons.
 
         public bool ShowingHome => state == State.Home;
+
+        /// <summary>Starts a round of Critter Whack on the nine tiles (the four squares step aside).</summary>
+        public void StartArcade()
+        {
+            if (Arcade == null) { StartCue(PreferredCue); return; }
+            if (Home != null) Home.Hide();
+            ClearPatches();
+            SetPatchesShown(false);
+            state = State.Arcade;
+            if (Status != null) { Status.text = ""; toastUntil = 0; }
+            if (Creatures != null) Creatures.BeginSession();
+            Arcade.Begin(Surface != null ? Surface.Current : default);
+        }
+
+        void OnArcadeFinished(WhackRound.Result r)
+        {
+            state = State.Done;
+            lastMeasured = true;
+            SetPatchesShown(true);
+            string text = WhackRound.CardText(r);
+            string found = Creatures != null ? Creatures.SessionLine() : "";
+            if (found.Length > 0 && text.Split('\n').Length < 6) text += "\n" + found;
+            SetTitle(text);
+            Toast(Home != null ? MenuHint + ", to go on" : "Pinch any square to play again", 9999f);
+            if (Scores != null) Scores.CountToday();
+            ArcadeFinished?.Invoke(r);
+        }
+
+        /// <summary>The four squares on or off (they step aside for the arcade's nine tiles).</summary>
+        void SetPatchesShown(bool on)
+        {
+            foreach (var p in Patches)
+            {
+                if (p == null) continue;
+                var r = p.GetComponent<Renderer>(); if (r != null) r.enabled = on;
+                var c = p.GetComponent<Collider>(); if (c != null) c.enabled = on;
+            }
+            foreach (var f in Frames) if (f != null) f.enabled = on;
+        }
 
         public void ShowHome()
         {
@@ -489,7 +556,7 @@ namespace Cyclopea
             Place(Surface != null ? Surface.Current : default);
             if (PlayerPrefs.GetInt(NoticeKey, 0) != 1) ShowNotice();
             else if (PlayerPrefs.GetInt(TutorialKey, 0) != 1) StartTutorial();
-            else if (Progress.Count > 0 && Home != null) ShowHome();   // a returning player starts at the home card
+            else if ((Progress.Count > 0 || WhackRound.TotalCaught > 0) && Home != null) ShowHome();   // a returning player starts at the home card
             else Restart();
         }
 
@@ -540,6 +607,8 @@ namespace Cyclopea
             var rungs = new List<SkillLadder.RungConfig>(Rungs());
             if (onlyRung.HasValue) rungs.RemoveAll(r => r.Rung != onlyRung.Value);
             ladder = new SkillLadder(floorArcsec, rungs);
+            gate = new TrialGate();
+            spotLevels.Clear(); spotCorrect.Clear();
             rung = SkillLadder.Rung.Spot;   // a different first rung (StartAtRung) gets its intro card
             sortOther = -1;
             catchTrials = catchHits = 0;
@@ -548,6 +617,8 @@ namespace Cyclopea
             decoy = -1; decoyTrials = decoysPicked = sinceDecoy = 0;
             log = new SessionLog();
             logged = 0;
+            // Each log opens with how the system is running, so a result can always be read with its context.
+            foreach (var e in Health.All) log.AddHealth(sessionId, DateTime.UtcNow, e.Part, e.Level.ToString(), e.Detail);
             trialIndex = 0;
             distances.Clear();
             string dir = Path.Combine(Application.persistentDataPath, "sessions");
@@ -595,11 +666,7 @@ namespace Cyclopea
         /// </summary>
         IEnumerable<SkillLadder.RungConfig> Rungs()
         {
-            yield return new SkillLadder.RungConfig
-            {
-                Rung = SkillLadder.Rung.Spot, Alternatives = 4,
-                Stair = new Staircase.Config { StartArcsec = 1920, FloorArcsec = floorArcsec }
-            };
+            yield return SkillLadder.SpotRung(floorArcsec);   // the same config the benchmark measures
             if (Cue != SessionLog.Cue.Stereo || (!LadderRungs && !onlyRung.HasValue)) yield break;
             yield return new SkillLadder.RungConfig
             {
@@ -631,7 +698,7 @@ namespace Cyclopea
                 if (CanRun(next)) { IntroduceRung(next); return; }
                 ladder.SetEnabled(next, false);
             }
-            if (ladder.IsFinished) { Finish(); return; }
+            if (ladder.IsFinished || gate.GaveUp) { Finish(); return; }
             StartTrial();
         }
 
@@ -735,6 +802,7 @@ namespace Cyclopea
         void OnSelected(StereoPatch p, string method)
         {
             if (Paused) return;
+            if (state == State.Arcade) { if (Arcade != null) Arcade.Whack(p, method); return; }
             if (state == State.Intro)
             {
                 // Accepted by looking and holding: this player chooses that way, so the game will too.
@@ -782,6 +850,7 @@ namespace Cyclopea
             double z = Mean(q => q.LastViewingDistance);
             distances.Add(z);
             string phase = ladder.CurrentStaircase.CurrentPhase.ToString();
+            string fault = TrialFault();
 
             log.Add(new SessionLog.Trial
             {
@@ -789,10 +858,14 @@ namespace Cyclopea
                 Index = trialIndex++, LevelArcsec = level, ViewingDistanceM = z,
                 Mode = sort ? SessionLog.CatchMode.TwoAFC : SessionLog.CatchMode.FourAFC, Eyes = DevControls.Eyes,
                 Correct = correct, ReactionMs = (int)((Time.time - trialStart) * 1000), Decoy = false, Phase = phase,
-                Cue = Cue, Rung = rung.ToString()
+                Cue = Cue, Rung = rung.ToString(), Clean = fault == null, Fault = fault ?? ""
             });
             Flush();
-            ladder.Respond(correct);
+            if (Count(fault))
+            {
+                if (rung == SkillLadder.Rung.Spot) { spotLevels.Add(level); spotCorrect.Add(correct); }
+                ladder.Respond(correct);
+            }
             lastCorrect = correct;
             chosen = p.Index;
 
@@ -860,6 +933,7 @@ namespace Cyclopea
             double level = ladder.CurrentArcsec;
             double z = Mean(q => q.LastViewingDistance);
             distances.Add(z);
+            string catchFault = TrialFault();
             log.Add(new SessionLog.Trial
             {
                 SessionId = sessionId, SubjectId = subjectId, Device = device, UtcTime = DateTime.UtcNow,
@@ -867,10 +941,11 @@ namespace Cyclopea
                 Mode = SessionLog.CatchMode.ReachToDepth, Eyes = DevControls.Eyes, Correct = correct,
                 ReactionMs = (int)((Time.time - trialStart) * 1000), Decoy = false,
                 Phase = ladder.CurrentStaircase.CurrentPhase.ToString(), Cue = Cue, Rung = rung.ToString(),
-                HeightM = catchHeight, DepthErrorM = over == target ? heightM - catchHeight : double.NaN
+                HeightM = catchHeight, DepthErrorM = over == target ? heightM - catchHeight : double.NaN,
+                Clean = catchFault == null, Fault = catchFault ?? ""
             });
             Flush();
-            ladder.Respond(correct);
+            if (Count(catchFault)) ladder.Respond(correct);
             catchTrials++;
             if (correct) catchHits++;
             if (over == target) catchErrors.Add(Math.Abs(heightM - catchHeight));
@@ -993,16 +1068,57 @@ namespace Cyclopea
             return n % 2 == 1 ? a[n / 2] : 0.5 * (a[n / 2 - 1] + a[n / 2]);
         }
 
+        /// <summary>"Spot: 42″ — a 1.2 mm…" becomes "Spot: 42″ (±20 %) — a 1.2 mm…" (the range goes right after the number).</summary>
+        static string WithRange(string line, string range)
+        {
+            if (range.Length == 0) return line;
+            int i = line.IndexOf(" — ", StringComparison.Ordinal);
+            return i < 0 ? line + range : line.Substring(0, i) + range + line.Substring(i);
+        }
+
+        /// <summary>The critical fault that touched the current round (from its start until now), or null if it was clean.</summary>
+        string TrialFault()
+        {
+            if (!Health.CriticalFaultSince(trialStart)) return null;
+            var e = Health.ActiveCriticalFault();
+            return e != null ? e.Detail : "the view wasn't steady";
+        }
+
+        /// <summary>Passes the round through the gate. A disturbed round is not counted, and the player is told why.</summary>
+        bool Count(string fault)
+        {
+            if (gate.Pass(fault == null, fault == null ? "" : ReasonFor(fault))) return true;
+            notCountedUntil = -1;
+            Toast("That one didn't count: " + ReasonFor(fault) + ".", 2.5f);
+            notCountedText = Status != null ? Status.text : "";
+            notCountedUntil = Time.time + 2.5f;
+            return false;
+        }
+
+        static string ReasonFor(string fault)
+        {
+            if (fault.Contains("same picture") || fault.Contains("one view") || fault.Contains("too far")) return "your two eyes got the same picture";
+            if (fault.Contains("head")) return "the headset lost track of your head";
+            if (fault.Contains("late frames")) return "the view stuttered";
+            return "the view wasn't steady";
+        }
+
         void Finish()
         {
             state = State.Done;
             ClearPatches();
             var profile = ladder.BuildProfile();
             double z = distances.Count > 0 ? Average(distances) : 0.6;
-            bool measured = profile.StereoMeasured && profile.ThresholdArcsec.ContainsKey(SkillLadder.Rung.Spot);
-            double thr = measured ? profile.ThresholdArcsec[SkillLadder.Rung.Spot] : double.NaN;
-            bool atFloor = measured && profile.AtFloor[SkillLadder.Rung.Spot];
             bool practice = onlyRung.HasValue && onlyRung.Value != SkillLadder.Rung.Spot;
+            // One honest outcome: a score with its range, "≤ floor", "no depth", or "not sure".
+            var verdict = Verdict.Judge(ladder, gate, spotLevels, spotCorrect);
+            LastVerdict = verdict;
+            bool measured = verdict.IsScore && profile.ThresholdArcsec.ContainsKey(SkillLadder.Rung.Spot);
+            bool unsure = verdict.Result == Verdict.Outcome.Uncertain;
+            double thr = measured ? verdict.Arcsec : double.NaN;
+            bool atFloor = measured && verdict.Result == Verdict.Outcome.AtFloor;
+            Debug.Log("[Cyclopea] verdict " + verdict.Result + (measured ? " " + thr.ToString("0") + "″" + verdict.RangeText() : "") +
+                      (unsure ? " (" + verdict.Reason + ")" : "") + ", counted " + gate.Clean + ", not counted " + gate.Dirty);
 
             // One summary per rung that ran; Spot's is the Depth Score (stats.py reads only Spot).
             if (!practice)
@@ -1011,7 +1127,9 @@ namespace Cyclopea
                     SessionId = sessionId, SubjectId = subjectId, Device = device, UtcStart = utcStart,
                     Trials = profile.Trials.TryGetValue(SkillLadder.Rung.Spot, out int spotTrials) ? spotTrials : trialIndex,
                     ThresholdArcsec = thr, AtFloor = atFloor, FloorArcsec = floorArcsec,
-                    Eyes = DevControls.Eyes, Cue = Cue, Rung = "Spot"
+                    Eyes = DevControls.Eyes, Cue = Cue, Rung = "Spot",
+                    Outcome = verdict.Result.ToString(), PlusMinusPercent = verdict.PlusMinusPercent,
+                    FittedLapse = verdict.FittedLapse, DirtyTrials = gate.Dirty
                 });
             foreach (var r in new[] { SkillLadder.Rung.Sort, SkillLadder.Rung.Catch })
                 if (profile.Trials.TryGetValue(r, out int n))
@@ -1023,12 +1141,13 @@ namespace Cyclopea
                         Eyes = DevControls.Eyes, Cue = Cue, Rung = r.ToString()
                     });
             Flush();
-            lastMeasured = measured || practice;
+            lastMeasured = practice || verdict.Result != Verdict.Outcome.NoDepth;
             string profileLine = ProfileLine(profile);
 
             bool motion = Cue == SessionLog.Cue.Motion;
             string line = !measured ? "" : motion ? MotionScore.Describe(thr, atFloor, z)
                                                   : SkillLadder.Describe(SkillLadder.Rung.Spot, thr, atFloor, z);
+            if (measured && !atFloor) line = WithRange(line, verdict.RangeText());
 
             // Growth between sessions: the day's best is kept, and a finer score than ever before is said out loud.
             bool best = false;
@@ -1047,6 +1166,8 @@ namespace Cyclopea
                     ? "Practice: " + onlyRung.Value + "\n" + (profileLine.Length > 0 ? profileLine : "nothing caught")
                     : measured
                     ? (motion ? "Motion Depth Score\n" : "Depth Score\n") + line
+                    : unsure
+                    ? "Not sure this time\n" + verdict.Reason + "\nNo score today. Your best is kept."
                     : motion
                         ? "Not measured this time.\nMove your head a little more and try again."
                         : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
@@ -1057,7 +1178,7 @@ namespace Cyclopea
                 // Five lines and more: a little smaller so the card stays inside the comfortable view.
                 if (titleCharSize > 0 && Title.text.Split('\n').Length >= 5) Title.characterSize = titleCharSize * 0.85f;
             }
-            Toast(!measured && !motion && !practice ? "Pinch any square to play with motion instead"
+            Toast(!measured && !unsure && !motion && !practice ? "Pinch any square to play with motion instead"
                   : Home != null ? MenuHint + ", to go on" : "Pinch any square to play again", 9999f);
             if (practice) return;   // practice of one rung is not a session result (no score anchor, no leaderboard)
             Finished?.Invoke(new Result
@@ -1066,6 +1187,14 @@ namespace Cyclopea
                 ThresholdArcsec = thr, ViewingDistanceM = z, ScoreLine = line, Cue = Cue, ProfileLine = profileLine,
                 PersonalBest = best
             });
+        }
+
+        void LateUpdate()
+        {
+            // With a controller in hand, the words say "pull the trigger" wherever they would say "pinch".
+            if (!ControllerSelector.InUse) return;
+            if (Title != null) { string t = InputWords.ForControllers(Title.text); if (t != Title.text) Title.text = t; }
+            if (Status != null) { string t = InputWords.ForControllers(Status.text); if (t != Status.text) Status.text = t; }
         }
 
         void Update()
@@ -1086,6 +1215,7 @@ namespace Cyclopea
             // Nothing chosen for a long while: maybe this player cannot pinch. Look and hold joins in.
             if (!DwellAssist && !Options.LookAndHold && IdleAssistSeconds > 0 &&
                 ((state == State.Trial && rung != SkillLadder.Rung.Catch && Time.time - trialStart > IdleAssistSeconds) ||
+                 (state == State.Arcade && Arcade != null && Arcade.Playing && Time.time - Arcade.LastActionAt > IdleAssistSeconds) ||
                  (state == State.Tutorial && tutorialHidden && !tutorialFound && Time.time - tutorialHiddenAt > IdleAssistSeconds)))
             {
                 DwellAssist = true;
@@ -1103,8 +1233,9 @@ namespace Cyclopea
             {
                 PlayerPrefs.SetInt(TutorialKey, 1);
                 PlayerPrefs.Save();
-                Restart();
+                if (Arcade != null) StartArcade(); else Restart();   // the first round is the game itself
             }
+            if (state == State.Arcade && Arcade != null && Arcade.Playing) playSeconds += Time.deltaTime;
 
             StereoPatch hovered = null;
             foreach (var s in Selectors)
@@ -1169,7 +1300,8 @@ namespace Cyclopea
         void UpdateBed()
         {
             if (Bed == null || Bed.clip == null) return;
-            bool on = state == State.Trial || state == State.Feedback || (state == State.Tutorial && tutorialHidden);
+            bool on = state == State.Trial || state == State.Feedback || (state == State.Tutorial && tutorialHidden) ||
+                      (state == State.Arcade && Arcade != null && Arcade.Playing);
             float target = on ? BedVolume : 0f;
             Bed.volume = Mathf.MoveTowards(Bed.volume, target, Time.deltaTime * BedVolume / 1.2f);
             if (Bed.volume > 0f && !Bed.isPlaying) { Bed.loop = true; Bed.Play(); }
@@ -1185,9 +1317,14 @@ namespace Cyclopea
         public void Toast(string msg, float seconds = 2.5f)
         {
             if (Status == null) return;
+            // "That one didn't count" is never pushed off by a happier toast in the same moment; they share.
+            if (Time.time < notCountedUntil && msg != notCountedText) msg = notCountedText + "\n" + msg;
             Status.text = msg;
             toastUntil = Time.time + seconds;
         }
+
+        float notCountedUntil = -1;
+        string notCountedText = "";
 
         void Flush()
         {
@@ -1197,7 +1334,12 @@ namespace Cyclopea
                 using (var w = new StreamWriter(filePath, true))
                     for (; logged < lines.Count; logged++) w.WriteLine(lines[logged]);
             }
-            catch (Exception e) { Debug.LogWarning("[Cyclopea] log write failed: " + e.Message); }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Cyclopea] log write failed: " + e.Message);
+                Health.Set(Health.Save, Health.Level.Fallback, "log write failed: " + e.Message, Time.time,
+                    "Can't save today's rounds on this headset. Is its storage full?");
+            }
         }
 
         void Play(AudioClip c) { if (Audio != null && c != null) Audio.PlayOneShot(c); }

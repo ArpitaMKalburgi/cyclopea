@@ -10,13 +10,14 @@ namespace Cyclopea
     /// squares of static as its buttons. Because the buttons are the squares, every way of choosing a square
     /// works here too: pinch, point, look and hold, thumb tap, voice. Look and hold is always on while a menu
     /// shows, so a player who cannot pinch can still reach Options and switch to it for play.
-    ///   Home     Play | the other cue (one-eye mode / two-eye mode) | Field guide | Options
+    ///   Home     Play (Critter Whack) | Depth Check | Field guide | Options
+    ///   Check    Two eyes | One eye (by moving your head) | – | Back
     ///   Options  Contrast | Choose by | Less movement | Back
     ///   Guide    which species and rarities have been found; any square goes back
     /// </summary>
     public sealed class HomeCard : MonoBehaviour
     {
-        public enum Page { Home, Options, FieldGuide }
+        public enum Page { Home, Options, FieldGuide, Check }
 
         public SpotSession Session;
         public ScoreAnchor Scores;
@@ -97,10 +98,15 @@ namespace Cyclopea
             switch (Current)
             {
                 case Page.Home:
-                    if (index == 0) { Hide(); Session.StartCue(Session.PreferredCue); }
-                    else if (index == 1) { Hide(); Session.StartCue(Other(Session.PreferredCue)); }
+                    if (index == 0) { Hide(); Session.StartArcade(); }
+                    else if (index == 1) Show(Page.Check);
                     else if (index == 2) Show(Page.FieldGuide);
                     else Show(Page.Options);
+                    break;
+                case Page.Check:
+                    if (index == 0) { Hide(); Session.StartCue(SessionLog.Cue.Stereo); }
+                    else if (index == 1) { Hide(); Session.StartCue(SessionLog.Cue.Motion); }
+                    else if (index == 3) Show(Page.Home);
                     break;
                 case Page.Options:
                     if (index == 0) Options.HighContrast = !Options.HighContrast;
@@ -124,11 +130,12 @@ namespace Cyclopea
             switch (page)
             {
                 case Page.Home:
-                    var cue = Session.PreferredCue;
-                    return i == 0 ? "Play" + (cue == SessionLog.Cue.Motion ? "\none-eye mode" : "")
-                         : i == 1 ? (cue == SessionLog.Cue.Stereo ? "One-eye\nmode" : "Two-eye\nmode")
+                    return i == 0 ? "Play"
+                         : i == 1 ? "Depth\nCheck"
                          : i == 2 ? "Field guide\n" + Kinds() + " of " + Creatures.Kinds
                          : "Options";
+                case Page.Check:
+                    return i == 0 ? "Two eyes" : i == 1 ? "One eye" : i == 2 ? "" : "Back";
                 case Page.Options:
                     return i == 0 ? "Contrast\n" + (Options.HighContrast ? "High" : "Standard")
                          : i == 1 ? "Choose by\n" + (Options.LookAndHold ? "Look + hold" : "Pinch")
@@ -151,17 +158,24 @@ namespace Cyclopea
             switch (page)
             {
                 case Page.Options:
-                    return "Options\nChoose a square to switch it.";
+                    string checks = Health.CheckLine();
+                    return "Options\nChoose a square to switch it." + (checks.Length > 0 ? "\n" + checks : "");
                 case Page.FieldGuide:
                     return FieldGuide(Session.Creatures != null ? Session.Creatures.Collection : new CreatureCollection());
+                case Page.Check:
+                    return "Depth Check: how fine a step in depth you see.\nTwo eyes, or one eye by moving your head.\nAbout three minutes.";
                 default:
-                    var sb = new StringBuilder("Daily Depth Check");
+                    var sb = new StringBuilder("Cyclopea");
                     var cue = Session.PreferredCue;
                     void Line(string s) { if (!string.IsNullOrEmpty(s)) sb.Append('\n').Append(s); }
-                    if (Scores != null) Line(Goals.StreakLine(Scores.StreakState, DateTime.Now));
+                    // One line for the streak and the best round, so the card stays inside the comfortable view.
+                    string streak = Scores != null ? Goals.StreakLine(Scores.StreakState, DateTime.Now) : "";
+                    string bestRound = WhackRound.Best > 0 ? "Best round " + WhackRound.Best.ToString("N0") : "";
+                    Line(streak.Length > 0 && bestRound.Length > 0 ? streak + " · " + bestRound : streak + bestRound);
                     Line(Goals.BestLine(Session.Progress, cue));
                     Line(Goals.Next(Session.Creatures != null ? Session.Creatures.Collection : null));
                     if (Room != null) Line(Colony.HomeLine(Room.Colony));
+                    Line(Health.PlayerLine());   // a fallback the player should know about (no scan, no passthrough…)
                     return sb.ToString();
             }
         }

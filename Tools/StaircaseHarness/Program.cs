@@ -19,7 +19,7 @@ class P {
     }
     return ok;
   }
-  static int Main(){
+  static int Main(string[] args){ if (args.Length > 0 && args[0] == "bench") return Bench.Run(args);
     bool ok = Table(5, 0.1);            // algorithm unbiased with the floor out of the way
     ok &= Table(15, 0.25);              // Quest 3 floor: near-floor bias is a display limit, bounded
     var sup=new SimulatedObserver(5, seed:7); var s2=new Staircase(new Staircase.Config{FloorArcsec=15});

@@ -65,7 +65,8 @@ namespace Cyclopea
             catch (Exception e) { Status = "load failed: " + e.Message; }
         }
 
-        async void OnFinished(SpotSession.Result r)
+        /// <summary>Today counts as a played day: the streak goes on (an arcade round or a Depth Check).</summary>
+        public void CountToday()
         {
             StreakState = Streak.Update(StreakState, DateTime.Now);
             PlayerPrefs.SetString(KeyStreakDay, StreakState.LastDay);
@@ -73,6 +74,11 @@ namespace Cyclopea
             PlayerPrefs.SetInt(KeyBest, StreakState.Best);
             PlayerPrefs.Save();
             StreakUpdated?.Invoke(StreakState);
+        }
+
+        async void OnFinished(SpotSession.Result r)
+        {
+            CountToday();
 
             if (Session == null || Session.Surface == null || Head == null) return;
             string text = r.Measured ? r.ScoreLine : "no stereo measured";
