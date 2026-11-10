@@ -14,10 +14,14 @@ namespace Cyclopea
     ///   Check    Two eyes | One eye (by moving your head) | – | Back
     ///   Options  Contrast | Choose by | Less movement | Back
     ///   Guide    which species and rarities have been found; any square goes back
+    ///   Pause    Resume | Home | New round / Start over / Skip to the game | Options   (the Menu button, mid-game)
+    ///   Card     Play again / Check again / One-eye mode | Home | Depth Check / Play | Options   (after a round)
+    /// The same corner always does the same thing: top-left goes on, top-right goes home, bottom-right is
+    /// Options or Back. Back returns to the page the player came from (home, the menu, or the score card).
     /// </summary>
     public sealed class HomeCard : MonoBehaviour
     {
-        public enum Page { Home, Options, FieldGuide, Check }
+        public enum Page { Home, Options, FieldGuide, Check, Pause, Card }
 
         public SpotSession Session;
         public ScoreAnchor Scores;
@@ -36,6 +40,10 @@ namespace Cyclopea
         public TextMesh[] Labels { get; private set; }
 
         float lastPick = -10f;
+        Page backTo = Page.Home;   // where Back goes: the last of Home, Pause or Card shown
+
+        /// <summary>The page that Back (on Options, Depth Check or the field guide) returns to.</summary>
+        public Page BackTo => backTo;
 
         void EnsureLabels()
         {
@@ -70,6 +78,7 @@ namespace Cyclopea
             EnsureLabels();
             Current = page;
             Showing = true;
+            if (page == Page.Home || page == Page.Pause || page == Page.Card) backTo = page;
             for (int i = 0; i < Labels.Length; i++)
             {
                 Labels[i].text = Label(page, i);
@@ -106,19 +115,31 @@ namespace Cyclopea
                 case Page.Check:
                     if (index == 0) { Hide(); Session.StartCue(SessionLog.Cue.Stereo); }
                     else if (index == 1) { Hide(); Session.StartCue(SessionLog.Cue.Motion); }
-                    else if (index == 3) Show(Page.Home);
+                    else if (index == 3) Show(backTo);
                     break;
                 case Page.Options:
                     if (index == 0) Options.HighContrast = !Options.HighContrast;
                     else if (index == 1) Options.LookAndHold = !Options.LookAndHold;
                     else if (index == 2) Options.LessMovement = !Options.LessMovement;
-                    else { Show(Page.Home); break; }
+                    else { Show(backTo); break; }
                     Options.Save();
                     Show(Page.Options);
                     Session.Toast(Said(index), 3f);
                     break;
+                case Page.Pause:
+                    if (index == 0) Session.Resume();
+                    else if (index == 1) Session.MenuHome();
+                    else if (index == 2) Session.MenuRestart();
+                    else Show(Page.Options);
+                    break;
+                case Page.Card:
+                    if (index == 0) Session.CardAgain();
+                    else if (index == 1) Session.ShowHome();
+                    else if (index == 2) { if (Session.CardIsArcade) Show(Page.Check); else Session.StartArcade(); }
+                    else Show(Page.Options);
+                    break;
                 default:
-                    Show(Page.Home);
+                    Show(backTo);
                     break;
             }
         }
@@ -141,6 +162,17 @@ namespace Cyclopea
                          : i == 1 ? "Choose by\n" + (Options.LookAndHold ? "Look + hold" : "Pinch")
                          : i == 2 ? "Less\nmovement\n" + (Options.LessMovement ? "On" : "Off")
                          : "Back";
+                case Page.Pause:
+                    return i == 0 ? "Resume"
+                         : i == 1 ? "Home"
+                         : i == 2 ? (Session.MenuFrom == SpotSession.Activity.Tutorial ? "Skip to\nthe game"
+                                   : Session.MenuFrom == SpotSession.Activity.Arcade ? "New\nround" : "Start\nover")
+                         : "Options";
+                case Page.Card:
+                    return i == 0 ? (Session.CardIsArcade ? "Play\nagain" : Session.CardOffersMotion ? "One-eye\nmode" : "Check\nagain")
+                         : i == 1 ? "Home"
+                         : i == 2 ? (Session.CardIsArcade ? "Depth\nCheck" : "Play")
+                         : "Options";
                 default:
                     return i == Labels.Length - 1 ? "Back" : "";
             }
@@ -164,6 +196,12 @@ namespace Cyclopea
                     return FieldGuide(Session.Creatures != null ? Session.Creatures.Collection : new CreatureCollection());
                 case Page.Check:
                     return "Depth Check: how fine a step in depth you see.\nTwo eyes, or one eye by moving your head.\nAbout three minutes.";
+                case Page.Pause:
+                    return "Paused\n" + (Session.MenuFrom == SpotSession.Activity.Arcade ? "The clock is stopped. The critters wait."
+                                       : Session.MenuFrom == SpotSession.Activity.Tutorial ? "The creature waits for you."
+                                       : "The Depth Check waits for you.");
+                case Page.Card:
+                    return Session.CardText;
                 default:
                     var sb = new StringBuilder("Cyclopea");
                     var cue = Session.PreferredCue;

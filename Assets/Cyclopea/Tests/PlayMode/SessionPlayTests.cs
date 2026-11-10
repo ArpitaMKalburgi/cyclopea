@@ -327,8 +327,13 @@ namespace Cyclopea.PlayTests
             Assert.True(s.OnBreak, "pinching during the break does nothing");
             yield return new WaitForSecondsRealtime(0.7f);
             s.Choose(0, "test");
-            Assert.True(s.AwaitingChoice, "after the break, a pinch starts a fresh session");
+            Assert.True(s.ShowingHome, "after the break, a pinch goes to the home card");
             s.CapSeconds = 600f;
+            yield return new WaitForSecondsRealtime(0.4f);   // the card ignores a second pick within 0.35 s
+            s.Choose(1, "test");
+            yield return new WaitForSecondsRealtime(0.4f);
+            s.Choose(0, "test");
+            Assert.True(s.AwaitingChoice, "and the budget starts again");
         }
 
         [UnityTest]

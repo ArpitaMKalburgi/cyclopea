@@ -8,11 +8,14 @@ namespace Cyclopea
     public sealed class KeyboardSelector : PatchSelector
     {
         public StereoPatch[] Patches;
+        [Tooltip("Esc opens and closes the menu.")]
+        public StereoPatch Menu;
         public Camera Cam;
 
         void Update()
         {
             var kb = Keyboard.current;
+            if (kb != null && Menu != null && kb.escapeKey.wasPressedThisFrame) Raise(Menu, "key");
             if (kb != null && Patches != null)
             {
                 if (kb.digit1Key.wasPressedThisFrame && Patches.Length > 0) Raise(Patches[0], "key");

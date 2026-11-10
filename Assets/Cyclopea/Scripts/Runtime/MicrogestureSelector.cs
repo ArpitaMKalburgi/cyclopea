@@ -12,7 +12,21 @@ namespace Cyclopea
     {
         public OVRMicrogestureEventSource Left, Right;
         public StereoPatch[] Patches;   // grid order: 0 far-left, 1 far-right, 2 near-left, 3 near-right
+        [Tooltip("The Menu button beside the near row: swipe back from the near row to reach it, forward to leave it.")]
+        public StereoPatch Menu;
         public float ShowSeconds = 6f;
+
+        const int OnMenu = 4;
+
+        bool MenuShown
+        {
+            get
+            {
+                if (Menu == null) return false;
+                var c = Menu.GetComponent<Collider>();
+                return c != null && c.enabled;
+            }
+        }
 
         int cursor = -1;
         float lastGesture = -100f;
@@ -53,11 +67,24 @@ namespace Cyclopea
             bool wasActive = Active;
             lastGesture = Time.time;
             // The first gesture only shows the highlight, so a stray tap or swipe never answers a trial.
-            if (!wasActive) { if (cursor < 0) cursor = 0; return; }
+            if (!wasActive) { if (cursor < 0 || (cursor == OnMenu && !MenuShown)) cursor = 0; return; }
+            if (cursor == OnMenu)
+            {
+                if (g == OVRHand.MicrogestureType.ThumbTap && MenuShown) Raise(Menu, "microgesture");
+                else if (g != OVRHand.MicrogestureType.SwipeBackward) cursor = 2;
+                return;
+            }
             if (g == OVRHand.MicrogestureType.ThumbTap) { Raise(Patches[cursor], "microgesture"); return; }
+            if (g == OVRHand.MicrogestureType.SwipeBackward && cursor >= 2 && MenuShown) { cursor = OnMenu; return; }
             cursor = Move(cursor, g);
         }
 
-        void Update() => Hovered = Active && Patches != null && cursor < Patches.Length ? Patches[cursor] : null;
+        void Update()
+        {
+            if (cursor == OnMenu && !MenuShown) cursor = 2;
+            Hovered = !Active || Patches == null ? null
+                    : cursor == OnMenu ? Menu
+                    : cursor < Patches.Length ? Patches[cursor] : null;
+        }
     }
 }

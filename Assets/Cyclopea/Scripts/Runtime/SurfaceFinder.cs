@@ -81,16 +81,35 @@ namespace Cyclopea
             Refresh();
         }
 
+        [Tooltip("Depth tries per search, counted only while the headset is worn and the app has focus.")]
+        public int DepthTries = 10;
+
         int retries;
         void RetryDepth()
         {
-            if (Source != "easel" || ++retries > 6)
+            if (Source != "easel" || retries >= DepthTries)
             {
                 CancelInvoke(nameof(RetryDepth));
                 if (Depth != null) Depth.enabled = false;
                 return;
             }
+            // At launch the system's own screens can hold focus for a while, and depth sees nothing then:
+            // the first playtest (Nov 10) used up every try before the player could see the app.
+            if (!Application.isEditor && (!OVRManager.hasInputFocus || !OVRManager.isHmdPresent)) return;
+            retries++;
             Refresh();
+        }
+
+        /// <summary>
+        /// No room scan and no desk found yet: look again with depth. The session calls this from the home
+        /// card and the score cards, where moving the squares to the desk interrupts nothing.
+        /// </summary>
+        public void SearchAgain()
+        {
+            if (Source != "easel" || !UseDepth || Depth == null || IsInvoking(nameof(RetryDepth))) return;
+            Depth.enabled = true;
+            retries = 0;
+            InvokeRepeating(nameof(RetryDepth), 0.5f, 1.0f);
         }
 
         Vector3 HeadPos => Head != null ? Head.position : new Vector3(0, 1.2f, 0);

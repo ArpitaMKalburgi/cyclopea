@@ -26,6 +26,8 @@ namespace Cyclopea.PlayTests
         const string Scene = "Assets/Cyclopea/Scenes/Cyclopea.unity";
         const float SeatedEyeAboveTable = 0.45f;
         const float Reach = 0.62f, GridHalf = 0.14f;
+        // Critter Whack's nine tiles (WhackRound: pitch 0.10, size 0.085) and the Menu button beside them.
+        const float TileHalf = 0.10f + 0.085f * 0.5f, MenuSize = 0.04f;
         const float FovHalfLimitDeg = 27f;   // Meta VR Glasses design area is 58 x 54 deg: half-height 27
         const float TitleOffset = (0.12f + 0.035f) + 0.05f;   // SpotSession.Place: step * 2 + 0.05
 
@@ -33,7 +35,7 @@ namespace Cyclopea.PlayTests
         {
             public int Seats, Table, Wall, Easel, Bad, TableSeats, TableSeatsOnTable, Turn;
             public readonly Dictionary<string, int> TableMisses = new Dictionary<string, int>();
-            public float WorstGridDeg, WorstTitleDeg;
+            public float WorstGridDeg, WorstTitleDeg, WorstMenuDeg;
             public readonly List<string> Problems = new List<string>();
         }
 
@@ -110,6 +112,7 @@ namespace Cyclopea.PlayTests
             md.AppendLine($"| Why a table seat didn't get a table | {string.Join(", ", total.TableMisses.OrderByDescending(k => k.Value).Select(k => k.Key + " " + k.Value))} |");
             md.AppendLine($"| Widest angle from gaze centre to a grid corner | {total.WorstGridDeg:0.0}° (limit {FovHalfLimitDeg}°) |");
             md.AppendLine($"| Widest angle from gaze centre to the title | {total.WorstTitleDeg:0.0}° (limit {FovHalfLimitDeg}°) |");
+            md.AppendLine($"| Widest angle from gaze centre to the Menu button | {total.WorstMenuDeg:0.0}° (limit {FovHalfLimitDeg}°) |");
             md.AppendLine($"| Meta XR Audio room model sized from the scan | {acousticRooms} rooms, mean clutter {(acousticRooms > 0 ? clutterSum / acousticRooms : 0):0.00} |");
             md.AppendLine();
             md.AppendLine("| Room | Seats | Table | Wall | Easel | Table seats on a table | Invalid |");
@@ -128,6 +131,7 @@ namespace Cyclopea.PlayTests
             Assert.That(total.Bad, Is.EqualTo(0), "invalid placements: " + string.Join("; ", total.Problems.Take(10)));
             Assert.That(total.WorstGridDeg, Is.LessThanOrEqualTo(FovHalfLimitDeg));
             Assert.That(total.WorstTitleDeg, Is.LessThanOrEqualTo(FovHalfLimitDeg));
+            Assert.That(total.WorstMenuDeg, Is.LessThanOrEqualTo(FovHalfLimitDeg), "the Menu button stays inside the design area");
 #else
             yield return null;
 #endif
@@ -141,6 +145,7 @@ namespace Cyclopea.PlayTests
             t.TableSeats += s.TableSeats; t.TableSeatsOnTable += s.TableSeatsOnTable;
             t.WorstGridDeg = Mathf.Max(t.WorstGridDeg, s.WorstGridDeg);
             t.WorstTitleDeg = Mathf.Max(t.WorstTitleDeg, s.WorstTitleDeg);
+            t.WorstMenuDeg = Mathf.Max(t.WorstMenuDeg, s.WorstMenuDeg);
             t.Problems.AddRange(s.Problems);
             t.Turn += s.Turn;
             foreach (var kv in s.TableMisses) t.TableMisses[kv.Key] = (t.TableMisses.TryGetValue(kv.Key, out int n) ? n : 0) + kv.Value;
@@ -233,8 +238,10 @@ namespace Cyclopea.PlayTests
             float grid = SurfaceFinder.GridCorners(s, GridHalf).Max(c => Vector3.Angle(gaze, c - head));
             Vector3 title = s.Center + s.Away * TitleOffset;
             float tdeg = Vector3.Angle(gaze, title - head);
+            float mdeg = SpotSession.MenuCorners(s, TileHalf, MenuSize).Max(c => Vector3.Angle(gaze, c - head));
             st.WorstGridDeg = Mathf.Max(st.WorstGridDeg, grid);
             st.WorstTitleDeg = Mathf.Max(st.WorstTitleDeg, tdeg);
+            st.WorstMenuDeg = Mathf.Max(st.WorstMenuDeg, mdeg);
             if (bad) st.Bad++;
         }
     }

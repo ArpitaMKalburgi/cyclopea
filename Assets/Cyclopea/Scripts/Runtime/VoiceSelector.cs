@@ -22,7 +22,7 @@ namespace Cyclopea
             LastHeard = text ?? "";
             if (!isActiveAndEnabled) return;
             var c = VoiceCommands.Parse(text);
-            if (c.Again && Session != null && Session.IsDone) { Session.Restart(); return; }
+            if (c.Again && Session != null && Session.IsDone) { Session.CardAgain(); return; }
             if (c.Square >= 0 && Patches != null && c.Square < Patches.Length) Raise(Patches[c.Square], "voice");
         }
     }

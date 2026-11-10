@@ -130,6 +130,7 @@ namespace Cyclopea
                         else { Session.StartAllRungs(); Say("Remote: all rungs"); }
                         break;
                     case "home": if (Session != null) Session.ShowHome(); break;
+                    case "menu": if (Session != null) Session.PressMenu("remote"); break;
                     case "option":
                         if (v == "contrast") Options.HighContrast = !Options.HighContrast;
                         else if (v == "look") Options.LookAndHold = !Options.LookAndHold;
@@ -164,6 +165,7 @@ namespace Cyclopea
         float autoNext, autoDoneAt;
         string autoLast = "";
         int autoSteps, autoDones;
+        bool autoMenuDone;   // the menu is opened (and resumed) once, mid-round
         readonly System.Collections.Generic.List<int> autoUp = new System.Collections.Generic.List<int>();
 
         public bool Autoplaying => autoObserver != null;
@@ -181,6 +183,7 @@ namespace Cyclopea
             autoLast = "";
             autoSteps = 0;
             autoDones = 0;
+            autoMenuDone = false;
             Say("Remote: autoplay " + arcsec + "″");
             AutoLog("start, a player who sees " + arcsec + "″");
         }
@@ -197,6 +200,7 @@ namespace Cyclopea
 
         string AutoState(SpotSession s) =>
             s.ShowingNotice ? "notice"
+            : s.MenuOpen ? "menu"
             : s.ShowingTutorial ? (!s.TutorialCreatureHidden ? "tutorial"
                                    // The wink plays out (each beat is its own state, so the device run screenshots it).
                                    : s.TutorialWinkBeat >= 0 && s.TutorialWinkBeat < 3 ? "tutorial-wink-" + s.TutorialWinkBeat
@@ -219,7 +223,7 @@ namespace Cyclopea
                 AutoLog("state " + st + " | " + (s.Title != null ? s.Title.text.Replace('\n', ' ') : ""));
                 autoLast = st;
             }
-            if (Time.time < autoNext || s.Paused) return;
+            if (Time.time < autoNext || (s.Paused && !s.MenuOpen)) return;
             autoNext = Time.time + AutoplayStepSeconds;
             // Only actions count toward the limit; waiting through feedback and rung intros does not.
             if (autoSteps > 800) { StopAutoplay("action limit reached in state " + st); return; }
@@ -243,8 +247,18 @@ namespace Cyclopea
                     else { s.Choose(autoDones == 0 ? 0 : 1, "autoplay"); autoSteps++; }
                     break;
                 case "check": s.Choose(0, "autoplay"); autoSteps++; break;   // two eyes
+                case "menu": s.Choose(0, "autoplay"); autoSteps++; break;    // Resume
                 case "arcade":
                     if (s.Arcade == null || !s.Arcade.Playing) break;
+                    if (!autoMenuDone && s.Arcade.Caught >= 2)
+                    {
+                        // Once per run: open the menu mid-round and resume, so the device run checks the clock waits.
+                        autoMenuDone = true;
+                        autoSteps++;
+                        AutoLog("menu at " + s.Arcade.TimeLeft.ToString("0.0") + " s left");
+                        s.PressMenu("autoplay");
+                        break;
+                    }
                     s.Arcade.RealUp(autoUp);
                     if (autoUp.Count == 0) break;
                     autoSteps++;

@@ -593,15 +593,47 @@ namespace Cyclopea.EditorTools
                 lr.shadowCastingMode = ShadowCastingMode.Off;
                 tileFrames[i] = lr;
             }
-            isdk.Patches = isdkEvents.Concat(tileEvents).ToArray();
+            // The Menu button: a small dark square beside the grid's near-left corner, chosen like any square
+            // (point and pinch, look and pinch, look and hold, trigger, thumb swipe, Esc). The first headset
+            // playtest (Nov 10) asked for a way back from anywhere.
+            var menuQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            menuQuad.name = "MenuButton";
+            menuQuad.transform.SetParent(game.transform, false);
+            menuQuad.GetComponent<MeshRenderer>().sharedMaterial = rds;
+            menuQuad.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+            var menuButton = menuQuad.AddComponent<StereoPatch>();
+            menuButton.Index = SpotSession.MenuIndex;
+            menuButton.Head = center;
+            menuButton.Brightness = 0.18f;
+            var menuEvents = AddInteractables(menuButton);
+            var menuFrameGo = new GameObject("Frame");
+            menuFrameGo.transform.SetParent(menuQuad.transform, false);
+            var menuFrame = menuFrameGo.AddComponent<LineRenderer>();
+            menuFrame.useWorldSpace = false;
+            menuFrame.loop = true;
+            var menuOutline = RoundedRect(0.53f, PatchCornerRadius + 0.03f, 6, -0.002f);
+            menuFrame.positionCount = menuOutline.Length;
+            menuFrame.SetPositions(menuOutline);
+            menuFrame.numCornerVertices = 2;
+            menuFrame.widthMultiplier = 0.0025f;
+            menuFrame.sharedMaterial = frameMat;
+            menuFrame.shadowCastingMode = ShadowCastingMode.Off;
+            var menuLabel = MakeText("MenuLabel", game.transform, 0.0012f, 48);
+            menuLabel.text = "Menu";
+            var menuLegible = menuLabel.gameObject.AddComponent<LegibleText>();
+            menuLegible.Head = center; menuLegible.TargetDmm = 16f; menuLegible.FitInside = menuQuad.transform;
+
+            isdk.Patches = isdkEvents.Concat(tileEvents).Concat(new[] { menuEvents }).ToArray();
             var micro = game.AddComponent<MicrogestureSelector>();
-            micro.Left = leftGestures; micro.Right = rightGestures; micro.Patches = patches;
+            micro.Left = leftGestures; micro.Right = rightGestures; micro.Patches = patches; micro.Menu = menuButton;
+            keys.Menu = menuButton;
 
             var session = game.AddComponent<SpotSession>();
             session.Head = center;
             session.Surface = finder;
             session.Patches = patches;
             session.Frames = frames;
+            session.MenuButton = menuButton; session.MenuFrame = menuFrame; session.MenuLabel = menuLabel;
             var voice = game.AddComponent<VoiceSelector>();
             voice.Patches = patches; voice.Session = session;
             var slap = game.AddComponent<SlapSelector>();
@@ -675,6 +707,7 @@ namespace Cyclopea.EditorTools
             whack.Session = session; whack.Tiles = tiles; whack.Frames = tileFrames;
             whack.Creatures = creatures; whack.Sounds = sounds; whack.Audio = session.Audio;
             session.Arcade = whack;
+            slap.Arcade = whack;
 
             // Reverb shaped like the player's own scanned room.
             var roomGo = new GameObject("RoomAcoustics (Meta XR Audio + MRUK)");

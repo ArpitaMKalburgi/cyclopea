@@ -65,10 +65,11 @@ Assets/Cyclopea/
   Editor/CyclopeaSetup.cs              headless setup (incl. ISDK rig via its wizard, XR Operator, Immersive Debugger), scene, APKs, captures
   Tests/Editor/                        66 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice,
                                        creatures, Catch geometry checked by ray tracing, hold-still detector, progress, goals)
-  Tests/PlayMode/                      24 in the real scene: wiring (no missing scripts), simulated sessions through Spot, Sort
+  Tests/PlayMode/                      48 in the real scene: wiring (no missing scripts), simulated sessions through Spot, Sort
                                        and Catch, motion mode, notice, tutorial, creatures, pause/resume, rest break, home card,
                                        options, decoys, personal best and graph, text inside the comfortable view,
-                                       placement sweep over every MRUK sample room
+                                       placement sweep over every MRUK sample room, Critter Whack, health checks,
+                                       the menu from every activity, labelled score cards, one hand = one slap
 Tools/
   quest.sh                             install / run / log / sessions / stats / remote / Meta VR CLI perf + fov / OVR Metrics /
                                        XR Operator per-eye check / upload to the Competition channel
@@ -91,7 +92,11 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Eyes identical outside the creature | mean abs difference 0.0000 |
 | One eye alone, privileged observer told the outline | 19.5–29.2 % in 4-choice trials (chance 25 %), 40 images per condition |
 | Unit tests in Unity | 76 / 76 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still, progress across days, goals) |
-| Tests in the real scene | 32 / 32 |
+| Tests in the real scene | 48 / 48 |
+| Photosensitivity | critters appearing, hopping and ducking redraw the whole grid at most 3 times a second (shortest gap measured over a round ≥ 0.34 s); a player's own catch still answers at once |
+| Menu inside the narrow field of view | across all 87 rooms and 1,372 seats, the Menu button's widest corner is 25.2° from the gaze centre (design area 27°) |
+| A way back from anywhere | the Menu square beside the grid (also ☰, the left-hand menu pinch, Esc) pauses a round, the Depth Check or the tutorial: the round's clock and critters wait, nothing floats behind the labels, and Resume puts back the same trial or the same time left; Home and start over keep the round's catches but set no best; Options' Back returns to the menu; every score card labels its squares (again, Home, the other game, Options). Taking the headset off or opening the system menu mid-game opens the game's menu, so the player comes back to "Paused" and resumes by choice, with nothing chosen while the headset is off |
+| One hand, one slap | fingertips on a critter with the palm landing first on the empty tile beside it: 1 caught, 0 empty taps (first playtest: 41 empty taps in a round from palms counted as second picks) |
 | Scene wiring | every square is an ISDK ray + gaze target; no missing scripts; all input modes wired |
 | Whole session in the real scene, simulated 60″ observer | Spot completes with a Depth Score of 93″ (56 trials, 4 of them decoy checks; 83–93″ across runs, the session's random draws differ); goes on to Sort (81″) and Catch (10 of 11); fakes ignored 4 of 4; one log summary per rung |
 | Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°); Meta XR Audio room model fits every room |

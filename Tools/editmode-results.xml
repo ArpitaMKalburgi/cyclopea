@@ -1,520 +1,520 @@
 <?xml version="1.0" encoding="utf-8"?>
-<test-run id="2" testcasecount="76" result="Passed" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:50Z" duration="8.2151721">
-  <test-suite type="TestSuite" id="1000" name="Cyclopea" fullname="Cyclopea" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:50Z" duration="8.215172" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
+<test-run id="2" testcasecount="76" result="Passed" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:38Z" duration="7.9603977">
+  <test-suite type="TestSuite" id="1000" name="Cyclopea" fullname="Cyclopea" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:38Z" duration="7.960398" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
     <properties>
       <property name="platform" value="EditMode" />
     </properties>
-    <test-suite type="Assembly" id="1094" name="Cyclopea.Tests.dll" fullname="C:/Hackathons/Meta VR Start Developer Competition 2026/cyclopea/Library/ScriptAssemblies/Cyclopea.Tests.dll" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:50Z" duration="8.198795" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <test-suite type="Assembly" id="1094" name="Cyclopea.Tests.dll" fullname="C:/Hackathons/Meta VR Start Developer Competition 2026/cyclopea/Library/ScriptAssemblies/Cyclopea.Tests.dll" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:38Z" duration="7.948372" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
       <properties>
-        <property name="_PID" value="55668" />
+        <property name="_PID" value="44556" />
         <property name="_APPDOMAIN" value="Unity Child Domain" />
         <property name="platform" value="EditMode" />
         <property name="EditorOnly" value="True" />
       </properties>
-      <test-suite type="TestSuite" id="1095" name="Cyclopea" fullname="Cyclopea" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:50Z" duration="8.196782" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <test-suite type="TestSuite" id="1095" name="Cyclopea" fullname="Cyclopea" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:38Z" duration="7.946664" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
         <properties />
-        <test-suite type="TestSuite" id="1096" name="Tests" fullname="Cyclopea.Tests" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:50Z" duration="8.195100" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <test-suite type="TestSuite" id="1096" name="Tests" fullname="Cyclopea.Tests" runstate="Runnable" testcasecount="76" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:38Z" duration="7.945236" total="76" passed="76" failed="0" inconclusive="0" skipped="0" asserts="0">
           <properties />
-          <test-suite type="TestFixture" id="1001" name="BenchmarkTests" fullname="Cyclopea.Tests.BenchmarkTests" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:49Z" duration="7.912162" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1001" name="BenchmarkTests" fullname="Cyclopea.Tests.BenchmarkTests" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:38Z" duration="7.614371" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1004" name="ACriticalFaultTaintsOnlyTheRoundsItTouched" fullname="Cyclopea.Tests.BenchmarkTests.ACriticalFaultTaintsOnlyTheRoundsItTouched" methodname="ACriticalFaultTaintsOnlyTheRoundsItTouched" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="429000230" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:42Z" duration="0.033985" asserts="0">
+            <test-case id="1004" name="ACriticalFaultTaintsOnlyTheRoundsItTouched" fullname="Cyclopea.Tests.BenchmarkTests.ACriticalFaultTaintsOnlyTheRoundsItTouched" methodname="ACriticalFaultTaintsOnlyTheRoundsItTouched" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="1128919047" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:30Z" duration="0.025028" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1006" name="AScoreComesWithItsRangeAndNotSureNeverCounts" fullname="Cyclopea.Tests.BenchmarkTests.AScoreComesWithItsRangeAndNotSureNeverCounts" methodname="AScoreComesWithItsRangeAndNotSureNeverCounts" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="1518290982" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:42Z" duration="0.012619" asserts="0">
+            <test-case id="1006" name="AScoreComesWithItsRangeAndNotSureNeverCounts" fullname="Cyclopea.Tests.BenchmarkTests.AScoreComesWithItsRangeAndNotSureNeverCounts" methodname="AScoreComesWithItsRangeAndNotSureNeverCounts" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="671757432" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:30Z" duration="0.013561" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1002" name="TheDepthScoreIsRightAndSaysWhenItIsNotSure" fullname="Cyclopea.Tests.BenchmarkTests.TheDepthScoreIsRightAndSaysWhenItIsNotSure" methodname="TheDepthScoreIsRightAndSaysWhenItIsNotSure" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="671369985" result="Passed" start-time="2026-11-10 19:51:42Z" end-time="2026-11-10 19:51:49Z" duration="7.813766" asserts="0">
+            <test-case id="1002" name="TheDepthScoreIsRightAndSaysWhenItIsNotSure" fullname="Cyclopea.Tests.BenchmarkTests.TheDepthScoreIsRightAndSaysWhenItIsNotSure" methodname="TheDepthScoreIsRightAndSaysWhenItIsNotSure" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="1772406201" result="Passed" start-time="2026-11-10 23:44:30Z" end-time="2026-11-10 23:44:38Z" duration="7.537353" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1005" name="TheFitFindsAKnownThresholdAndLapseRate" fullname="Cyclopea.Tests.BenchmarkTests.TheFitFindsAKnownThresholdAndLapseRate" methodname="TheFitFindsAKnownThresholdAndLapseRate" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="711392269" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.009788" asserts="0">
+            <test-case id="1005" name="TheFitFindsAKnownThresholdAndLapseRate" fullname="Cyclopea.Tests.BenchmarkTests.TheFitFindsAKnownThresholdAndLapseRate" methodname="TheFitFindsAKnownThresholdAndLapseRate" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="420274060" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.010338" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1003" name="TheGateIgnoresDisturbedRoundsAndGivesUpOnlyWhenTheFaultStays" fullname="Cyclopea.Tests.BenchmarkTests.TheGateIgnoresDisturbedRoundsAndGivesUpOnlyWhenTheFaultStays" methodname="TheGateIgnoresDisturbedRoundsAndGivesUpOnlyWhenTheFaultStays" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="869764347" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.001285" asserts="0">
+            <test-case id="1003" name="TheGateIgnoresDisturbedRoundsAndGivesUpOnlyWhenTheFaultStays" fullname="Cyclopea.Tests.BenchmarkTests.TheGateIgnoresDisturbedRoundsAndGivesUpOnlyWhenTheFaultStays" methodname="TheGateIgnoresDisturbedRoundsAndGivesUpOnlyWhenTheFaultStays" classname="Cyclopea.Tests.BenchmarkTests" runstate="Runnable" seed="1711400772" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001744" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1029" name="CamouflageTests" fullname="Cyclopea.Tests.CamouflageTests" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.022107" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1029" name="CamouflageTests" fullname="Cyclopea.Tests.CamouflageTests" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.024704" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1035" name="PaletteFollowsTheDeskHue" fullname="Cyclopea.Tests.CamouflageTests.PaletteFollowsTheDeskHue" methodname="PaletteFollowsTheDeskHue" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="289682401" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.004401" asserts="0">
+            <test-case id="1035" name="PaletteFollowsTheDeskHue" fullname="Cyclopea.Tests.CamouflageTests.PaletteFollowsTheDeskHue" methodname="PaletteFollowsTheDeskHue" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="475585757" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.005384" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-suite type="ParameterizedMethod" id="1034" name="PaletteKeepsDotsResolvable" fullname="Cyclopea.Tests.CamouflageTests.PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.014003" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <test-suite type="ParameterizedMethod" id="1034" name="PaletteKeepsDotsResolvable" fullname="Cyclopea.Tests.CamouflageTests.PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.015269" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
               <properties />
-              <test-case id="1030" name="Oak desk" fullname="Cyclopea.Tests.CamouflageTests.Oak desk" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="1691495070" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.005901" asserts="0">
+              <test-case id="1030" name="Oak desk" fullname="Cyclopea.Tests.CamouflageTests.Oak desk" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="163632445" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.006039" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1031" name="White desk, almost no texture" fullname="Cyclopea.Tests.CamouflageTests.White desk, almost no texture" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="1661985983" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.002019" asserts="0">
+              <test-case id="1031" name="White desk, almost no texture" fullname="Cyclopea.Tests.CamouflageTests.White desk, almost no texture" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="2002878625" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002513" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1032" name="Black desk" fullname="Cyclopea.Tests.CamouflageTests.Black desk" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="1132688549" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.001994" asserts="0">
+              <test-case id="1032" name="Black desk" fullname="Cyclopea.Tests.CamouflageTests.Black desk" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="1985886941" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002420" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1033" name="Blue mat" fullname="Cyclopea.Tests.CamouflageTests.Blue mat" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="973669724" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.002022" asserts="0">
+              <test-case id="1033" name="Blue mat" fullname="Cyclopea.Tests.CamouflageTests.Blue mat" methodname="PaletteKeepsDotsResolvable" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="87267174" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002433" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
             </test-suite>
-            <test-case id="1036" name="TooFewPixelsFallsBackToDefault" fullname="Cyclopea.Tests.CamouflageTests.TooFewPixelsFallsBackToDefault" methodname="TooFewPixelsFallsBackToDefault" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="1201172490" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.001181" asserts="0">
+            <test-case id="1036" name="TooFewPixelsFallsBackToDefault" fullname="Cyclopea.Tests.CamouflageTests.TooFewPixelsFallsBackToDefault" methodname="TooFewPixelsFallsBackToDefault" classname="Cyclopea.Tests.CamouflageTests" runstate="Runnable" seed="768643112" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001472" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1007" name="ColonyTests" fullname="Cyclopea.Tests.ColonyTests" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:50Z" duration="0.013343" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1007" name="ColonyTests" fullname="Cyclopea.Tests.ColonyTests" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.018539" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1010" name="DamagedSavesNeverThrow" fullname="Cyclopea.Tests.ColonyTests.DamagedSavesNeverThrow" methodname="DamagedSavesNeverThrow" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="1732299617" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.002786" asserts="0">
+            <test-case id="1010" name="DamagedSavesNeverThrow" fullname="Cyclopea.Tests.ColonyTests.DamagedSavesNeverThrow" methodname="DamagedSavesNeverThrow" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="1882004824" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.003793" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1011" name="DeskSlotsFillTheFirstGap" fullname="Cyclopea.Tests.ColonyTests.DeskSlotsFillTheFirstGap" methodname="DeskSlotsFillTheFirstGap" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="242784970" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.000638" asserts="0">
+            <test-case id="1011" name="DeskSlotsFillTheFirstGap" fullname="Cyclopea.Tests.ColonyTests.DeskSlotsFillTheFirstGap" methodname="DeskSlotsFillTheFirstGap" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="60772651" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000994" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1012" name="HomeCardSaysHowManyLiveInYourRoom" fullname="Cyclopea.Tests.ColonyTests.HomeCardSaysHowManyLiveInYourRoom" methodname="HomeCardSaysHowManyLiveInYourRoom" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="335533348" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.000529" asserts="0">
+            <test-case id="1012" name="HomeCardSaysHowManyLiveInYourRoom" fullname="Cyclopea.Tests.ColonyTests.HomeCardSaysHowManyLiveInYourRoom" methodname="HomeCardSaysHowManyLiveInYourRoom" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="1650481761" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000683" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1008" name="OneResidentPerKindAndSixteenAtMost" fullname="Cyclopea.Tests.ColonyTests.OneResidentPerKindAndSixteenAtMost" methodname="OneResidentPerKindAndSixteenAtMost" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="1528511137" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:49Z" duration="0.000406" asserts="0">
+            <test-case id="1008" name="OneResidentPerKindAndSixteenAtMost" fullname="Cyclopea.Tests.ColonyTests.OneResidentPerKindAndSixteenAtMost" methodname="OneResidentPerKindAndSixteenAtMost" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="946453416" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000518" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1009" name="SavedColonyReadsBackExactly" fullname="Cyclopea.Tests.ColonyTests.SavedColonyReadsBackExactly" methodname="SavedColonyReadsBackExactly" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="38328564" result="Passed" start-time="2026-11-10 19:51:49Z" end-time="2026-11-10 19:51:50Z" duration="0.001033" asserts="0">
+            <test-case id="1009" name="SavedColonyReadsBackExactly" fullname="Cyclopea.Tests.ColonyTests.SavedColonyReadsBackExactly" methodname="SavedColonyReadsBackExactly" classname="Cyclopea.Tests.ColonyTests" runstate="Runnable" seed="1153230008" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001453" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1013" name="CreatureTests" fullname="Cyclopea.Tests.CreatureTests" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.041310" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1013" name="CreatureTests" fullname="Cyclopea.Tests.CreatureTests" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.045465" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1017" name="BadSaveNeverBlocksPlay" fullname="Cyclopea.Tests.CreatureTests.BadSaveNeverBlocksPlay" methodname="BadSaveNeverBlocksPlay" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="190381081" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.001114" asserts="0">
+            <test-case id="1017" name="BadSaveNeverBlocksPlay" fullname="Cyclopea.Tests.CreatureTests.BadSaveNeverBlocksPlay" methodname="BadSaveNeverBlocksPlay" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="1704601932" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001250" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1019" name="BodyFootprintIsExactlyTheOutlineSeenInDepth" fullname="Cyclopea.Tests.CreatureTests.BodyFootprintIsExactlyTheOutlineSeenInDepth" methodname="BodyFootprintIsExactlyTheOutlineSeenInDepth" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="1068205066" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.012400" asserts="0">
+            <test-case id="1019" name="BodyFootprintIsExactlyTheOutlineSeenInDepth" fullname="Cyclopea.Tests.CreatureTests.BodyFootprintIsExactlyTheOutlineSeenInDepth" methodname="BodyFootprintIsExactlyTheOutlineSeenInDepth" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="887860376" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.016194" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1016" name="CollectionCountsFirstsAndSurvivesASave" fullname="Cyclopea.Tests.CreatureTests.CollectionCountsFirstsAndSurvivesASave" methodname="CollectionCountsFirstsAndSurvivesASave" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="240049019" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.002168" asserts="0">
+            <test-case id="1016" name="CollectionCountsFirstsAndSurvivesASave" fullname="Cyclopea.Tests.CreatureTests.CollectionCountsFirstsAndSurvivesASave" methodname="CollectionCountsFirstsAndSurvivesASave" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="254203103" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001806" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1015" name="RarityFollowsHowFineTheDepthWas" fullname="Cyclopea.Tests.CreatureTests.RarityFollowsHowFineTheDepthWas" methodname="RarityFollowsHowFineTheDepthWas" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="1051543031" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000468" asserts="0">
+            <test-case id="1015" name="RarityFollowsHowFineTheDepthWas" fullname="Cyclopea.Tests.CreatureTests.RarityFollowsHowFineTheDepthWas" methodname="RarityFollowsHowFineTheDepthWas" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="1720512441" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000472" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1018" name="ScoreCardLineReadsWell" fullname="Cyclopea.Tests.CreatureTests.ScoreCardLineReadsWell" methodname="ScoreCardLineReadsWell" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="1055747643" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000751" asserts="0">
+            <test-case id="1018" name="ScoreCardLineReadsWell" fullname="Cyclopea.Tests.CreatureTests.ScoreCardLineReadsWell" methodname="ScoreCardLineReadsWell" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="555905305" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001231" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1014" name="SpeciesComesFromTheOutlinesLobes" fullname="Cyclopea.Tests.CreatureTests.SpeciesComesFromTheOutlinesLobes" methodname="SpeciesComesFromTheOutlinesLobes" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="1438545763" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000464" asserts="0">
+            <test-case id="1014" name="SpeciesComesFromTheOutlinesLobes" fullname="Cyclopea.Tests.CreatureTests.SpeciesComesFromTheOutlinesLobes" methodname="SpeciesComesFromTheOutlinesLobes" classname="Cyclopea.Tests.CreatureTests" runstate="Runnable" seed="539499787" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000973" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1020" name="LadderAndCodeTests" fullname="Cyclopea.Tests.LadderAndCodeTests" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.093372" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1020" name="LadderAndCodeTests" fullname="Cyclopea.Tests.LadderAndCodeTests" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.110463" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1021" name="LadderClimbsAllRungsAndBuildsProfile" fullname="Cyclopea.Tests.LadderAndCodeTests.LadderClimbsAllRungsAndBuildsProfile" methodname="LadderClimbsAllRungsAndBuildsProfile" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="1540492050" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.006758" asserts="0">
+            <test-case id="1021" name="LadderClimbsAllRungsAndBuildsProfile" fullname="Cyclopea.Tests.LadderAndCodeTests.LadderClimbsAllRungsAndBuildsProfile" methodname="LadderClimbsAllRungsAndBuildsProfile" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="1053115557" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.006425" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1028" name="PatchesStayInsideReachAndSurface" fullname="Cyclopea.Tests.LadderAndCodeTests.PatchesStayInsideReachAndSurface" methodname="PatchesStayInsideReachAndSurface" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="125754099" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.002130" asserts="0">
+            <test-case id="1028" name="PatchesStayInsideReachAndSurface" fullname="Cyclopea.Tests.LadderAndCodeTests.PatchesStayInsideReachAndSurface" methodname="PatchesStayInsideReachAndSurface" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="643789290" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002293" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1027" name="SecretCodeRejectsCorruption" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRejectsCorruption" methodname="SecretCodeRejectsCorruption" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="1672259900" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.002099" asserts="0">
+            <test-case id="1027" name="SecretCodeRejectsCorruption" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRejectsCorruption" methodname="SecretCodeRejectsCorruption" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="1488001235" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.003604" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-suite type="ParameterizedMethod" id="1026" name="SecretCodeRoundTrips" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.061586" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <test-suite type="ParameterizedMethod" id="1026" name="SecretCodeRoundTrips" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.076413" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
               <properties />
-              <test-case id="1023" name="SecretCodeRoundTrips(&quot;HELLO&quot;,4,1234)" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips(&quot;HELLO&quot;,4,1234)" methodname="SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="88404085" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.001063" asserts="0">
+              <test-case id="1023" name="SecretCodeRoundTrips(&quot;HELLO&quot;,4,1234)" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips(&quot;HELLO&quot;,4,1234)" methodname="SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="2074190708" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001314" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1024" name="SecretCodeRoundTrips(&quot;I LOVE YOU&quot;,0,ushort.MaxValue)" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips(&quot;I LOVE YOU&quot;,0,ushort.MaxValue)" methodname="SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="1110177058" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000138" asserts="0">
+              <test-case id="1024" name="SecretCodeRoundTrips(&quot;I LOVE YOU&quot;,0,ushort.MaxValue)" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips(&quot;I LOVE YOU&quot;,0,ushort.MaxValue)" methodname="SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="2057658146" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000174" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1025" name="SecretCodeRoundTrips(&quot;WATER?&quot;,15,ushort.MinValue)" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips(&quot;WATER?&quot;,15,ushort.MinValue)" methodname="SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="1422745575" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000079" asserts="0">
+              <test-case id="1025" name="SecretCodeRoundTrips(&quot;WATER?&quot;,15,ushort.MinValue)" fullname="Cyclopea.Tests.LadderAndCodeTests.SecretCodeRoundTrips(&quot;WATER?&quot;,15,ushort.MinValue)" methodname="SecretCodeRoundTrips" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="148627239" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000106" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
             </test-suite>
-            <test-case id="1022" name="StereoblindPlayerIsDetectedHonestly" fullname="Cyclopea.Tests.LadderAndCodeTests.StereoblindPlayerIsDetectedHonestly" methodname="StereoblindPlayerIsDetectedHonestly" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="2015916748" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000361" asserts="0">
+            <test-case id="1022" name="StereoblindPlayerIsDetectedHonestly" fullname="Cyclopea.Tests.LadderAndCodeTests.StereoblindPlayerIsDetectedHonestly" methodname="StereoblindPlayerIsDetectedHonestly" classname="Cyclopea.Tests.LadderAndCodeTests" runstate="Runnable" seed="1327270357" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000402" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1040" name="MicrogestureTests" fullname="Cyclopea.Tests.MicrogestureTests" classname="Cyclopea.Tests.MicrogestureTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.002108" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1040" name="MicrogestureTests" fullname="Cyclopea.Tests.MicrogestureTests" classname="Cyclopea.Tests.MicrogestureTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001750" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1041" name="SwipesWalkTheGrid" fullname="Cyclopea.Tests.MicrogestureTests.SwipesWalkTheGrid" methodname="SwipesWalkTheGrid" classname="Cyclopea.Tests.MicrogestureTests" runstate="Runnable" seed="1847386119" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000828" asserts="0">
+            <test-case id="1041" name="SwipesWalkTheGrid" fullname="Cyclopea.Tests.MicrogestureTests.SwipesWalkTheGrid" methodname="SwipesWalkTheGrid" classname="Cyclopea.Tests.MicrogestureTests" runstate="Runnable" seed="1539208200" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000660" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1061" name="MotionParallaxTests" fullname="Cyclopea.Tests.MotionParallaxTests" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.024442" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1061" name="MotionParallaxTests" fullname="Cyclopea.Tests.MotionParallaxTests" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.028844" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1062" name="EyeOnTheLeftSeesTheCrossedHalfDisparity" fullname="Cyclopea.Tests.MotionParallaxTests.EyeOnTheLeftSeesTheCrossedHalfDisparity" methodname="EyeOnTheLeftSeesTheCrossedHalfDisparity" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="1312477375" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000532" asserts="0">
+            <test-case id="1062" name="EyeOnTheLeftSeesTheCrossedHalfDisparity" fullname="Cyclopea.Tests.MotionParallaxTests.EyeOnTheLeftSeesTheCrossedHalfDisparity" methodname="EyeOnTheLeftSeesTheCrossedHalfDisparity" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="1064865290" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001218" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1065" name="LogRecordsTheCue" fullname="Cyclopea.Tests.MotionParallaxTests.LogRecordsTheCue" methodname="LogRecordsTheCue" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="1567704507" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.004486" asserts="0">
+            <test-case id="1065" name="LogRecordsTheCue" fullname="Cyclopea.Tests.MotionParallaxTests.LogRecordsTheCue" methodname="LogRecordsTheCue" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="850277037" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.003360" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1064" name="MotionScoreSpeaksMillimetresNotArcseconds" fullname="Cyclopea.Tests.MotionParallaxTests.MotionScoreSpeaksMillimetresNotArcseconds" methodname="MotionScoreSpeaksMillimetresNotArcseconds" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="81389074" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000955" asserts="0">
+            <test-case id="1064" name="MotionScoreSpeaksMillimetresNotArcseconds" fullname="Cyclopea.Tests.MotionParallaxTests.MotionScoreSpeaksMillimetresNotArcseconds" methodname="MotionScoreSpeaksMillimetresNotArcseconds" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="2021601641" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001113" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1063" name="SlideGrowsWithHeadSwayAndDepthAndIsZeroWithoutEither" fullname="Cyclopea.Tests.MotionParallaxTests.SlideGrowsWithHeadSwayAndDepthAndIsZeroWithoutEither" methodname="SlideGrowsWithHeadSwayAndDepthAndIsZeroWithoutEither" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="1242485876" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000493" asserts="0">
+            <test-case id="1063" name="SlideGrowsWithHeadSwayAndDepthAndIsZeroWithoutEither" fullname="Cyclopea.Tests.MotionParallaxTests.SlideGrowsWithHeadSwayAndDepthAndIsZeroWithoutEither" methodname="SlideGrowsWithHeadSwayAndDepthAndIsZeroWithoutEither" classname="Cyclopea.Tests.MotionParallaxTests" runstate="Runnable" seed="1262687418" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000573" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1066" name="ProgressTests" fullname="Cyclopea.Tests.ProgressTests" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.055448" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1066" name="ProgressTests" fullname="Cyclopea.Tests.ProgressTests" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.066502" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1067" name="ADayKeepsItsFinestScoreAndAPersonalBestNeedsAnEarlierScore" fullname="Cyclopea.Tests.ProgressTests.ADayKeepsItsFinestScoreAndAPersonalBestNeedsAnEarlierScore" methodname="ADayKeepsItsFinestScoreAndAPersonalBestNeedsAnEarlierScore" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1691846793" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.009455" asserts="0">
+            <test-case id="1067" name="ADayKeepsItsFinestScoreAndAPersonalBestNeedsAnEarlierScore" fullname="Cyclopea.Tests.ProgressTests.ADayKeepsItsFinestScoreAndAPersonalBestNeedsAnEarlierScore" methodname="ADayKeepsItsFinestScoreAndAPersonalBestNeedsAnEarlierScore" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="744747634" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.011930" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1074" name="BestLineAndHomeWordsCarryNoMedicalClaims" fullname="Cyclopea.Tests.ProgressTests.BestLineAndHomeWordsCarryNoMedicalClaims" methodname="BestLineAndHomeWordsCarryNoMedicalClaims" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1116375875" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.011911" asserts="0">
+            <test-case id="1074" name="BestLineAndHomeWordsCarryNoMedicalClaims" fullname="Cyclopea.Tests.ProgressTests.BestLineAndHomeWordsCarryNoMedicalClaims" methodname="BestLineAndHomeWordsCarryNoMedicalClaims" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="232573030" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.012870" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1075" name="DecoyTrialsAreLoggedWithWhetherTheFakeWasPicked" fullname="Cyclopea.Tests.ProgressTests.DecoyTrialsAreLoggedWithWhetherTheFakeWasPicked" methodname="DecoyTrialsAreLoggedWithWhetherTheFakeWasPicked" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1728575975" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000442" asserts="0">
+            <test-case id="1075" name="DecoyTrialsAreLoggedWithWhetherTheFakeWasPicked" fullname="Cyclopea.Tests.ProgressTests.DecoyTrialsAreLoggedWithWhetherTheFakeWasPicked" methodname="DecoyTrialsAreLoggedWithWhetherTheFakeWasPicked" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1895217071" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000541" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1071" name="GraphGoesUpForFinerDepthOneStepPerHalving" fullname="Cyclopea.Tests.ProgressTests.GraphGoesUpForFinerDepthOneStepPerHalving" methodname="GraphGoesUpForFinerDepthOneStepPerHalving" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1702251770" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.001198" asserts="0">
+            <test-case id="1071" name="GraphGoesUpForFinerDepthOneStepPerHalving" fullname="Cyclopea.Tests.ProgressTests.GraphGoesUpForFinerDepthOneStepPerHalving" methodname="GraphGoesUpForFinerDepthOneStepPerHalving" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="307533373" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000734" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1070" name="OldDaysAreDropped" fullname="Cyclopea.Tests.ProgressTests.OldDaysAreDropped" methodname="OldDaysAreDropped" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1929679534" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.008219" asserts="0">
+            <test-case id="1070" name="OldDaysAreDropped" fullname="Cyclopea.Tests.ProgressTests.OldDaysAreDropped" methodname="OldDaysAreDropped" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1166101395" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.007160" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1068" name="RecentIsOldestFirstAndPerCue" fullname="Cyclopea.Tests.ProgressTests.RecentIsOldestFirstAndPerCue" methodname="RecentIsOldestFirstAndPerCue" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="2075562917" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.001273" asserts="0">
+            <test-case id="1068" name="RecentIsOldestFirstAndPerCue" fullname="Cyclopea.Tests.ProgressTests.RecentIsOldestFirstAndPerCue" methodname="RecentIsOldestFirstAndPerCue" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="680886311" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002643" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1069" name="SavesRoundTripAndDamageIsSkipped" fullname="Cyclopea.Tests.ProgressTests.SavesRoundTripAndDamageIsSkipped" methodname="SavesRoundTripAndDamageIsSkipped" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1477958442" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.001584" asserts="0">
+            <test-case id="1069" name="SavesRoundTripAndDamageIsSkipped" fullname="Cyclopea.Tests.ProgressTests.SavesRoundTripAndDamageIsSkipped" methodname="SavesRoundTripAndDamageIsSkipped" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="945862341" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002253" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1072" name="TheNextGoalIsTheNextRarityThenTheRestOfTheGuide" fullname="Cyclopea.Tests.ProgressTests.TheNextGoalIsTheNextRarityThenTheRestOfTheGuide" methodname="TheNextGoalIsTheNextRarityThenTheRestOfTheGuide" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="2073513018" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000663" asserts="0">
+            <test-case id="1072" name="TheNextGoalIsTheNextRarityThenTheRestOfTheGuide" fullname="Cyclopea.Tests.ProgressTests.TheNextGoalIsTheNextRarityThenTheRestOfTheGuide" methodname="TheNextGoalIsTheNextRarityThenTheRestOfTheGuide" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="1422000755" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000966" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1073" name="TheStreakLineSaysWhatTodayDoes" fullname="Cyclopea.Tests.ProgressTests.TheStreakLineSaysWhatTodayDoes" methodname="TheStreakLineSaysWhatTodayDoes" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="926686329" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000435" asserts="0">
+            <test-case id="1073" name="TheStreakLineSaysWhatTodayDoes" fullname="Cyclopea.Tests.ProgressTests.TheStreakLineSaysWhatTodayDoes" methodname="TheStreakLineSaysWhatTodayDoes" classname="Cyclopea.Tests.ProgressTests" runstate="Runnable" seed="269476384" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000580" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1076" name="ReachTests" fullname="Cyclopea.Tests.ReachTests" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.007129" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1076" name="ReachTests" fullname="Cyclopea.Tests.ReachTests" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.008184" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-case id="1079" name="HeadOnTheHeldHeightMatchesTheSpotDisparity" fullname="Cyclopea.Tests.ReachTests.HeadOnTheHeldHeightMatchesTheSpotDisparity" methodname="HeadOnTheHeldHeightMatchesTheSpotDisparity" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="1103107932" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000424" asserts="0">
+            <test-case id="1079" name="HeadOnTheHeldHeightMatchesTheSpotDisparity" fullname="Cyclopea.Tests.ReachTests.HeadOnTheHeldHeightMatchesTheSpotDisparity" methodname="HeadOnTheHeldHeightMatchesTheSpotDisparity" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="20709499" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000468" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1077" name="HeightAndShiftAreInverses" fullname="Cyclopea.Tests.ReachTests.HeightAndShiftAreInverses" methodname="HeightAndShiftAreInverses" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="340005904" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000490" asserts="0">
+            <test-case id="1077" name="HeightAndShiftAreInverses" fullname="Cyclopea.Tests.ReachTests.HeightAndShiftAreInverses" methodname="HeightAndShiftAreInverses" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="2049015572" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000589" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1081" name="HoldingStillFiresOnceThroughJitterButNotWhileMoving" fullname="Cyclopea.Tests.ReachTests.HoldingStillFiresOnceThroughJitterButNotWhileMoving" methodname="HoldingStillFiresOnceThroughJitterButNotWhileMoving" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="789216750" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000972" asserts="0">
+            <test-case id="1081" name="HoldingStillFiresOnceThroughJitterButNotWhileMoving" fullname="Cyclopea.Tests.ReachTests.HoldingStillFiresOnceThroughJitterButNotWhileMoving" methodname="HoldingStillFiresOnceThroughJitterButNotWhileMoving" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="1449800479" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000996" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1082" name="LadderSkipsADisabledRung" fullname="Cyclopea.Tests.ReachTests.LadderSkipsADisabledRung" methodname="LadderSkipsADisabledRung" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="1673537022" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000877" asserts="0">
+            <test-case id="1082" name="LadderSkipsADisabledRung" fullname="Cyclopea.Tests.ReachTests.LadderSkipsADisabledRung" methodname="LadderSkipsADisabledRung" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="1617185566" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001154" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1083" name="LogCarriesTheRungAndTheCatchError" fullname="Cyclopea.Tests.ReachTests.LogCarriesTheRungAndTheCatchError" methodname="LogCarriesTheRungAndTheCatchError" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="550581526" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000481" asserts="0">
+            <test-case id="1083" name="LogCarriesTheRungAndTheCatchError" fullname="Cyclopea.Tests.ReachTests.LogCarriesTheRungAndTheCatchError" methodname="LogCarriesTheRungAndTheCatchError" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="1297678640" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000641" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1078" name="TheTwoLinesOfSightCrossAtTheClosedFormPoint" fullname="Cyclopea.Tests.ReachTests.TheTwoLinesOfSightCrossAtTheClosedFormPoint" methodname="TheTwoLinesOfSightCrossAtTheClosedFormPoint" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="85396622" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000672" asserts="0">
+            <test-case id="1078" name="TheTwoLinesOfSightCrossAtTheClosedFormPoint" fullname="Cyclopea.Tests.ReachTests.TheTwoLinesOfSightCrossAtTheClosedFormPoint" methodname="TheTwoLinesOfSightCrossAtTheClosedFormPoint" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="50181274" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000960" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1080" name="TouchesAreJudgedByHeight" fullname="Cyclopea.Tests.ReachTests.TouchesAreJudgedByHeight" methodname="TouchesAreJudgedByHeight" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="575288624" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000625" asserts="0">
+            <test-case id="1080" name="TouchesAreJudgedByHeight" fullname="Cyclopea.Tests.ReachTests.TouchesAreJudgedByHeight" methodname="TouchesAreJudgedByHeight" classname="Cyclopea.Tests.ReachTests" runstate="Runnable" seed="1735681753" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000821" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1084" name="StaircaseTests" fullname="Cyclopea.Tests.StaircaseTests" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.007643" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1084" name="StaircaseTests" fullname="Cyclopea.Tests.StaircaseTests" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.008254" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-suite type="ParameterizedMethod" id="1090" name="ConvergesOnObserverThreshold" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.005142" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <test-suite type="ParameterizedMethod" id="1090" name="ConvergesOnObserverThreshold" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.005477" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
               <properties />
-              <test-case id="1085" name="ConvergesOnObserverThreshold(30.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(30.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="527255084" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.001461" asserts="0">
+              <test-case id="1085" name="ConvergesOnObserverThreshold(30.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(30.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1860421220" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001776" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1086" name="ConvergesOnObserverThreshold(60.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(60.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1321194140" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000732" asserts="0">
+              <test-case id="1086" name="ConvergesOnObserverThreshold(60.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(60.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="974545785" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000575" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1087" name="ConvergesOnObserverThreshold(120.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(120.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="2075352434" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000603" asserts="0">
+              <test-case id="1087" name="ConvergesOnObserverThreshold(120.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(120.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1523074378" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000529" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1088" name="ConvergesOnObserverThreshold(300.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(300.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="828228940" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000533" asserts="0">
+              <test-case id="1088" name="ConvergesOnObserverThreshold(300.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(300.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="989770681" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000508" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1089" name="ConvergesOnObserverThreshold(800.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(800.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1582260597" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000548" asserts="0">
+              <test-case id="1089" name="ConvergesOnObserverThreshold(800.0d)" fullname="Cyclopea.Tests.StaircaseTests.ConvergesOnObserverThreshold(800.0d)" methodname="ConvergesOnObserverThreshold" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1775465747" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000508" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
             </test-suite>
-            <test-case id="1093" name="DisparityGeometryMatchesHandCalculation" fullname="Cyclopea.Tests.StaircaseTests.DisparityGeometryMatchesHandCalculation" methodname="DisparityGeometryMatchesHandCalculation" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="344128374" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000339" asserts="0">
+            <test-case id="1093" name="DisparityGeometryMatchesHandCalculation" fullname="Cyclopea.Tests.StaircaseTests.DisparityGeometryMatchesHandCalculation" methodname="DisparityGeometryMatchesHandCalculation" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="2132042642" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000352" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1091" name="ReportsFloorWhenObserverBeatsDisplay" fullname="Cyclopea.Tests.StaircaseTests.ReportsFloorWhenObserverBeatsDisplay" methodname="ReportsFloorWhenObserverBeatsDisplay" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1525134645" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000305" asserts="0">
+            <test-case id="1091" name="ReportsFloorWhenObserverBeatsDisplay" fullname="Cyclopea.Tests.StaircaseTests.ReportsFloorWhenObserverBeatsDisplay" methodname="ReportsFloorWhenObserverBeatsDisplay" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1978135202" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000324" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-case id="1092" name="StopsAfterConfiguredReversals" fullname="Cyclopea.Tests.StaircaseTests.StopsAfterConfiguredReversals" methodname="StopsAfterConfiguredReversals" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="1865983118" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000307" asserts="0">
-              <properties>
-                <property name="retryIteration" value="0" />
-                <property name="repeatIteration" value="0" />
-              </properties>
-            </test-case>
-          </test-suite>
-          <test-suite type="TestFixture" id="1037" name="StreakTests" fullname="Cyclopea.Tests.StreakTests" classname="Cyclopea.Tests.StreakTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.002084" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
-            <properties />
-            <test-case id="1038" name="CountsConsecutiveDaysAndResetsOnAGap" fullname="Cyclopea.Tests.StreakTests.CountsConsecutiveDaysAndResetsOnAGap" methodname="CountsConsecutiveDaysAndResetsOnAGap" classname="Cyclopea.Tests.StreakTests" runstate="Runnable" seed="1184131964" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000994" asserts="0">
-              <properties>
-                <property name="retryIteration" value="0" />
-                <property name="repeatIteration" value="0" />
-              </properties>
-            </test-case>
-            <test-case id="1039" name="SurvivesMonthEnd" fullname="Cyclopea.Tests.StreakTests.SurvivesMonthEnd" methodname="SurvivesMonthEnd" classname="Cyclopea.Tests.StreakTests" runstate="Runnable" seed="1066527253" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000232" asserts="0">
+            <test-case id="1092" name="StopsAfterConfiguredReversals" fullname="Cyclopea.Tests.StaircaseTests.StopsAfterConfiguredReversals" methodname="StopsAfterConfiguredReversals" classname="Cyclopea.Tests.StaircaseTests" runstate="Runnable" seed="989666019" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000338" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
           </test-suite>
-          <test-suite type="TestFixture" id="1042" name="VoiceCommandTests" fullname="Cyclopea.Tests.VoiceCommandTests" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.009277" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <test-suite type="TestFixture" id="1037" name="StreakTests" fullname="Cyclopea.Tests.StreakTests" classname="Cyclopea.Tests.StreakTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002331" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
             <properties />
-            <test-suite type="ParameterizedMethod" id="1059" name="AmbiguousOrUnrelatedSpeechPicksNothing" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.004370" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <test-case id="1038" name="CountsConsecutiveDaysAndResetsOnAGap" fullname="Cyclopea.Tests.StreakTests.CountsConsecutiveDaysAndResetsOnAGap" methodname="CountsConsecutiveDaysAndResetsOnAGap" classname="Cyclopea.Tests.StreakTests" runstate="Runnable" seed="1008730300" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000921" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1039" name="SurvivesMonthEnd" fullname="Cyclopea.Tests.StreakTests.SurvivesMonthEnd" methodname="SurvivesMonthEnd" classname="Cyclopea.Tests.StreakTests" runstate="Runnable" seed="1284430343" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000328" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1042" name="VoiceCommandTests" fullname="Cyclopea.Tests.VoiceCommandTests" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.011078" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="ParameterizedMethod" id="1059" name="AmbiguousOrUnrelatedSpeechPicksNothing" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.006266" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
               <properties />
-              <test-case id="1053" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1438101613" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000965" asserts="0">
+              <test-case id="1053" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="609832478" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001261" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1054" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;hmm&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;hmm&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1559841339" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.001542" asserts="0">
+              <test-case id="1054" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;hmm&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;hmm&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="660033075" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002173" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1055" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;left&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;left&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="563638829" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000654" asserts="0">
+              <test-case id="1055" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;left&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;left&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="139621877" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.001108" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1056" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;one or two&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;one or two&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1550812793" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000095" asserts="0">
+              <test-case id="1056" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;one or two&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;one or two&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="386185349" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000163" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1057" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;go to the store for milk&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;go to the store for milk&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1138346246" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000077" asserts="0">
+              <test-case id="1057" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;go to the store for milk&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;go to the store for milk&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="263796499" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000107" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1058" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;top bottom left&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;top bottom left&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="274474477" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000065" asserts="0">
+              <test-case id="1058" name="AmbiguousOrUnrelatedSpeechPicksNothing(&quot;top bottom left&quot;)" fullname="Cyclopea.Tests.VoiceCommandTests.AmbiguousOrUnrelatedSpeechPicksNothing(&quot;top bottom left&quot;)" methodname="AmbiguousOrUnrelatedSpeechPicksNothing" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1977664026" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000096" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
             </test-suite>
-            <test-case id="1060" name="PlayAgain" fullname="Cyclopea.Tests.VoiceCommandTests.PlayAgain" methodname="PlayAgain" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1018970246" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000230" asserts="0">
+            <test-case id="1060" name="PlayAgain" fullname="Cyclopea.Tests.VoiceCommandTests.PlayAgain" methodname="PlayAgain" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="943386515" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000404" asserts="0">
               <properties>
                 <property name="retryIteration" value="0" />
                 <property name="repeatIteration" value="0" />
               </properties>
             </test-case>
-            <test-suite type="ParameterizedMethod" id="1052" name="SquaresAreHeard" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.003584" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <test-suite type="ParameterizedMethod" id="1052" name="SquaresAreHeard" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.002988" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
               <properties />
-              <test-case id="1043" name="SquaresAreHeard(&quot;top left&quot;,0)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;top left&quot;,0)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="172473905" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000322" asserts="0">
+              <test-case id="1043" name="SquaresAreHeard(&quot;top left&quot;,0)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;top left&quot;,0)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="665439052" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000499" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1044" name="SquaresAreHeard(&quot;Top right!&quot;,1)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;Top right!&quot;,1)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="879912130" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000105" asserts="0">
+              <test-case id="1044" name="SquaresAreHeard(&quot;Top right!&quot;,1)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;Top right!&quot;,1)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="2107006329" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000186" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1045" name="SquaresAreHeard(&quot;bottom left&quot;,2)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;bottom left&quot;,2)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="531811538" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000287" asserts="0">
+              <test-case id="1045" name="SquaresAreHeard(&quot;bottom left&quot;,2)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;bottom left&quot;,2)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1717306175" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000100" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1046" name="SquaresAreHeard(&quot;the lower right one&quot;,3)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;the lower right one&quot;,3)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="364375218" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000105" asserts="0">
+              <test-case id="1046" name="SquaresAreHeard(&quot;the lower right one&quot;,3)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;the lower right one&quot;,3)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1477202432" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000091" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1047" name="SquaresAreHeard(&quot;near left&quot;,2)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;near left&quot;,2)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="868443552" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000068" asserts="0">
+              <test-case id="1047" name="SquaresAreHeard(&quot;near left&quot;,2)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;near left&quot;,2)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="929819268" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000091" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1048" name="SquaresAreHeard(&quot;number two&quot;,1)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;number two&quot;,1)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1094351253" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000181" asserts="0">
+              <test-case id="1048" name="SquaresAreHeard(&quot;number two&quot;,1)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;number two&quot;,1)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="2099999189" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000091" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1049" name="SquaresAreHeard(&quot;three&quot;,2)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;three&quot;,2)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="865701689" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000138" asserts="0">
+              <test-case id="1049" name="SquaresAreHeard(&quot;three&quot;,2)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;three&quot;,2)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1077017725" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000090" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1050" name="SquaresAreHeard(&quot;Four.&quot;,3)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;Four.&quot;,3)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1498471852" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000090" asserts="0">
+              <test-case id="1050" name="SquaresAreHeard(&quot;Four.&quot;,3)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;Four.&quot;,3)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="2033574588" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000090" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />
                 </properties>
               </test-case>
-              <test-case id="1051" name="SquaresAreHeard(&quot;first&quot;,0)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;first&quot;,0)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="724945577" result="Passed" start-time="2026-11-10 19:51:50Z" end-time="2026-11-10 19:51:50Z" duration="0.000100" asserts="0">
+              <test-case id="1051" name="SquaresAreHeard(&quot;first&quot;,0)" fullname="Cyclopea.Tests.VoiceCommandTests.SquaresAreHeard(&quot;first&quot;,0)" methodname="SquaresAreHeard" classname="Cyclopea.Tests.VoiceCommandTests" runstate="Runnable" seed="1888938929" result="Passed" start-time="2026-11-10 23:44:38Z" end-time="2026-11-10 23:44:38Z" duration="0.000087" asserts="0">
                 <properties>
                   <property name="retryIteration" value="0" />
                   <property name="repeatIteration" value="0" />

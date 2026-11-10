@@ -12,6 +12,14 @@ namespace Cyclopea
         public Hand Left, Right;
         [Tooltip("Tests and editor: an object that stands in for a tracked right index fingertip.")]
         public Transform SimulatedTip;
+        [Tooltip("Tests: the same simulated hand's palm (it slaps as one hand with SimulatedTip).")]
+        public Transform SimulatedPalm;
+
+        /// <summary>Slap points: simulated tip and palm; left index, middle, palm; right index, middle, palm.</summary>
+        public const int SlapPointCount = 8;
+
+        /// <summary>Which hand a slap point belongs to: 0 simulated, 1 left, 2 right.</summary>
+        public static int HandOf(int point) => point < 2 ? 0 : point < 5 ? 1 : 2;
 
         void Start()
         {
@@ -43,16 +51,17 @@ namespace Cyclopea
         }
 
         /// <summary>
-        /// The points of both hands that can slap a tile, in a fixed order (simulated tip; left index, middle,
-        /// palm; right index, middle, palm). Untracked points are false in <paramref name="valid"/>.
+        /// The points of both hands that can slap a tile, in a fixed order (simulated tip and palm; left index,
+        /// middle, palm; right index, middle, palm). Untracked points are false in <paramref name="valid"/>.
         /// </summary>
         public void SlapPoints(Vector3[] points, bool[] valid)
         {
             for (int i = 0; i < valid.Length; i++) valid[i] = false;
-            if (points.Length < 7 || valid.Length < 7) return;
+            if (points.Length < SlapPointCount || valid.Length < SlapPointCount) return;
             if (SimulatedTip != null && SimulatedTip.gameObject.activeInHierarchy) { points[0] = SimulatedTip.position; valid[0] = true; }
-            Fill(Left, 1, points, valid);
-            Fill(Right, 4, points, valid);
+            if (SimulatedPalm != null && SimulatedPalm.gameObject.activeInHierarchy) { points[1] = SimulatedPalm.position; valid[1] = true; }
+            Fill(Left, 2, points, valid);
+            Fill(Right, 5, points, valid);
         }
 
         static void Fill(Hand h, int at, Vector3[] points, bool[] valid)

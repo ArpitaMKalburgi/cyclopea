@@ -22,9 +22,7 @@ namespace Cyclopea
         public const string NoticeText =
             "Cyclopea is a game about depth perception.\n" +
             "It is not a medical device and gives no medical advice.\n" +
-            "If a condition affects your vision,\n" +
-            "ask an eye-care professional first.\n" +
-            "A short break comes after 10 minutes.";
+            "A vision condition? Ask an eye-care professional first.";
 
         /// <summary>Set once the first-launch tutorial creature has been found.</summary>
         public const string TutorialKey = "cyc_tutorial_v1";
@@ -51,6 +49,13 @@ namespace Cyclopea
         public WhackRound Arcade;
         [Tooltip("Counts a played day for the streak after an arcade round.")]
         public ScoreAnchor Scores;
+        [Tooltip("Beside the static in the tutorial, a round and the Depth Check: opens the menu (Resume, Home, start over, Options). " +
+                 "So do the ☰ button on the left controller and the left hand's menu pinch.")]
+        public StereoPatch MenuButton;
+        public LineRenderer MenuFrame;
+        public TextMesh MenuLabel;
+        public float MenuSize = 0.04f;
+        public const int MenuIndex = 99;
 
         /// <summary>An arcade round ended (room colony, platform and streak listen).</summary>
         public event Action<WhackRound.Result> ArcadeFinished;
@@ -71,6 +76,11 @@ namespace Cyclopea
         public float CapSeconds = 600f;
         [Tooltip("Length of the rest break. It keeps counting while the headset is off.")]
         public float BreakSeconds = 120f;
+        [Tooltip("The break is offered, not imposed: after this long a pick goes on (a judge mid-evaluation is never locked out).")]
+        public float BreakSkipAfterSeconds = 8f;
+
+        /// <summary>The rest break is over, or has lasted long enough that the player may go on.</summary>
+        bool BreakCanEnd => Time.time >= breakUntil || Time.time >= breakUntil - BreakSeconds + BreakSkipAfterSeconds;
         [Tooltip("Tutorial: how long the found creature is celebrated before round 1 begins.")]
         public float TutorialRewardSeconds = 2.6f;
         [Tooltip("The wink, once the tutorial creature has hidden: see it float, close one eye (it goes flat), open both " +
@@ -149,6 +159,7 @@ namespace Cyclopea
         {
             Cue = cue;
             onlyRung = null;
+            if (BreakDue) { EnterBreak(); return; }
             Restart();
         }
 
@@ -202,7 +213,7 @@ namespace Cyclopea
         public bool DwellAssist { get; private set; }
 
         // Pause reasons; play resumes only when none is left.
-        public const int PauseFocus = 1, PauseUnmounted = 2, PauseApp = 4, PauseManual = 8;
+        public const int PauseFocus = 1, PauseUnmounted = 2, PauseApp = 4, PauseManual = 8, PauseMenu = 16;
 
         void Awake()
         {
@@ -270,6 +281,7 @@ namespace Cyclopea
         /// <summary>Replays the tutorial (dev remote; also what a first launch does after the notice).</summary>
         public void StartTutorial()
         {
+            EndOthers();
             if (Home != null) Home.Hide();
             state = State.Tutorial;
             tutorialHidden = tutorialFound = false;
@@ -364,10 +376,24 @@ namespace Cyclopea
         // System menu, headset off, app backgrounded: the trial freezes (reaction time and the 10-minute
         // budget stop counting) and picks up exactly where it was.
 
-        void OnFocusLost() => SetPaused(PauseFocus, true);
+        // The headset's own events; the editor never sends them, and tests use HeadsetOff / HeadsetOn.
+        void OnFocusLost() { if (!Application.isEditor) AwayFromGame(); SetPaused(PauseFocus, true); }
         void OnFocusAcquired() => SetPaused(PauseFocus, false);
-        void OnUnmounted() => SetPaused(PauseUnmounted, true);
+        void OnUnmounted() { if (!Application.isEditor) AwayFromGame(); SetPaused(PauseUnmounted, true); }
         void OnMounted() => SetPaused(PauseUnmounted, false);
+
+        /// <summary>Tests: the headset comes off (the same path as OVRManager.HMDUnmounted), and goes back on.</summary>
+        public void HeadsetOff() { AwayFromGame(); SetPaused(PauseUnmounted, true); }
+        public void HeadsetOn() => SetPaused(PauseUnmounted, false);
+
+        [Tooltip("Headset off or the system menu mid-game: the game's menu opens, so coming back is a choice (Resume), " +
+                 "never a round whose clock is already running.")]
+        public bool MenuWhenAway = true;
+
+        void AwayFromGame()
+        {
+            if (MenuWhenAway && MenuAvailable) OpenMenu(quiet: true);
+        }
         void OnApplicationPause(bool p) { if (!Application.isEditor) SetPaused(PauseApp, p); }
 
         public bool Paused => pauseFlags != 0;
@@ -388,7 +414,216 @@ namespace Cyclopea
                 trialStart += d;
                 stateUntil += d;
                 rungStart += d;
-                if (state == State.Trial || state == State.Feedback) Toast("Welcome back", 1.5f);
+                tutorialHiddenAt += d;
+                if (reason != PauseMenu && (state == State.Trial || state == State.Feedback)) Toast("Welcome back", 1.5f);
+            }
+        }
+
+        /// <summary>Paused only because the player opened the menu (its squares still answer).</summary>
+        bool OnlyMenuPaused => pauseFlags == PauseMenu;
+
+        // ---------- Menu ----------
+        // Always one step away: the Menu button beside the static, the ☰ button on the left controller, or the
+        // left hand's menu pinch (palm toward you; Meta reports it as Start). It pauses whatever runs (the
+        // round's clock and its critters wait) and turns the four squares into
+        //   Resume | Home | start over (New round, Start over, Skip to the game) | Options.
+
+        /// <summary>What the player was doing when the menu opened.</summary>
+        public enum Activity { None, Tutorial, Arcade, Check }
+
+        public bool MenuOpen => menuOpen;
+        public Activity MenuFrom { get; private set; }
+
+        bool menuOpen;
+        string savedTitle = "", savedStatus = "";
+        float savedTitleSize, savedToastLeft;
+        struct PatchState { public double Arcsec, Motion, Hold; public bool Decoy; }
+        readonly PatchState[] savedPatches = new PatchState[4];
+
+        Activity ActivityNow =>
+            state == State.Tutorial ? Activity.Tutorial
+          : state == State.Arcade ? Activity.Arcade
+          : state == State.Trial || state == State.Feedback || state == State.RungIntro ? Activity.Check
+          : Activity.None;
+
+        /// <summary>The Menu button shows (and works) in the tutorial, a round and the Depth Check; menus and cards have Home and Back on their squares.</summary>
+        public bool MenuAvailable => !menuOpen && ActivityNow != Activity.None;
+
+        /// <summary>The Menu button, or the system menu input, or a test.</summary>
+        public void PressMenu(string method = "script")
+        {
+            if (MenuButton != null) OnSelected(MenuButton, method);
+            else ToggleMenu();
+        }
+
+        void ToggleMenu()
+        {
+            if (menuOpen) Resume();
+            else OpenMenu();
+        }
+
+        public void OpenMenu() => OpenMenu(quiet: false);
+
+        /// <summary><paramref name="quiet"/>: opened for the player (headset off), so no click sound into an empty room.</summary>
+        void OpenMenu(bool quiet)
+        {
+            if (!MenuAvailable || Home == null) return;
+            menuOpen = true;
+            MenuFrom = ActivityNow;
+            if (Title != null) { savedTitle = Title.text; savedTitleSize = Title.characterSize; }
+            if (Status != null) savedStatus = Status.text;
+            savedToastLeft = Mathf.Max(0f, toastUntil - Time.time);
+            // Nothing floats behind a menu label; it is all put back on Resume.
+            for (int i = 0; i < Patches.Length && i < savedPatches.Length; i++)
+            {
+                var p = Patches[i];
+                if (p == null) continue;
+                savedPatches[i] = new PatchState { Arcsec = p.Arcsec, Motion = p.MotionArcsec, Hold = p.HoldHeightM, Decoy = p.Decoy };
+                p.Arcsec = 0; p.MotionArcsec = 0; p.HoldHeightM = 0; p.Decoy = false;
+            }
+            SetPaused(PauseMenu, true);
+            if (state == State.Arcade && Arcade != null) { Arcade.SetHidden(true); SetPatchesShown(true); }
+            if (!quiet) PlaySfx(b => b.UiSelect);
+            Home.Show(HomeCard.Page.Pause);
+            if (dwellSel != null) dwellSel.ResetDwell();
+            Toast(MenuHint, 9999f);
+            Debug.Log("[Cyclopea] menu opened (" + MenuFrom + (quiet ? ", headset off or system menu" : "") + ")");
+        }
+
+        /// <summary>Back to exactly where the player was: same trial, same critters, same clock.</summary>
+        public void Resume()
+        {
+            if (!menuOpen) return;
+            menuOpen = false;
+            if (Home != null) Home.Hide();
+            for (int i = 0; i < Patches.Length && i < savedPatches.Length; i++)
+            {
+                var p = Patches[i];
+                if (p == null) continue;
+                var k = savedPatches[i];
+                p.Arcsec = k.Arcsec; p.MotionArcsec = k.Motion; p.HoldHeightM = k.Hold; p.Decoy = k.Decoy;
+            }
+            if (state == State.Arcade && Arcade != null) { SetPatchesShown(false); Arcade.SetHidden(false); }
+            SetPaused(PauseMenu, false);
+            if (Title != null) { Title.text = savedTitle; if (savedTitleSize > 0) Title.characterSize = savedTitleSize; }
+            if (Status != null) Status.text = savedStatus;
+            toastUntil = Time.time + savedToastLeft;
+            if (dwellSel != null) dwellSel.ResetDwell();
+            Debug.Log("[Cyclopea] menu: resume (" + MenuFrom + ")");
+        }
+
+        /// <summary>The menu's third square: a new round, the Depth Check from the start, or (in the tutorial) straight to the game.</summary>
+        public void MenuRestart()
+        {
+            var from = LeaveActivity("start over");
+            if (from == Activity.Check) Restart();
+            else if (Arcade != null) StartArcade();
+            else StartCue(PreferredCue);
+        }
+
+        /// <summary>The menu's Home square: leave what runs (catches so far are kept) for the home card.</summary>
+        public void MenuHome()
+        {
+            LeaveActivity("home");
+            ShowHome();
+        }
+
+        /// <summary>
+        /// Something new starts (a menu choice, a card, a remote command, a test): no menu stays open over it,
+        /// no round keeps running underneath (its catches are kept), and the four squares are back.
+        /// </summary>
+        void EndOthers()
+        {
+            if (menuOpen) { menuOpen = false; SetPaused(PauseMenu, false); }
+            if (Arcade != null && Arcade.Running) Arcade.Abort(keepCatches: true);
+            SetPatchesShown(true);
+        }
+
+        Activity LeaveActivity(string why)
+        {
+            var from = MenuFrom;
+            menuOpen = false;
+            if (Home != null) Home.Hide();
+            SetPaused(PauseMenu, false);
+            if (from == Activity.Arcade && Arcade != null) Arcade.Abort(keepCatches: true);
+            if (from == Activity.Tutorial)
+            {
+                PlayerPrefs.SetInt(TutorialKey, 1);
+                PlayerPrefs.Save();
+                if (Creatures != null) Creatures.IntroSkip();
+            }
+            ClearPatches();
+            SetPatchesShown(true);
+            Debug.Log("[Cyclopea] menu: " + why + " (left " + from + ")");
+            return from;
+        }
+
+        /// <summary>☰ on the left controller, or the left hand's menu pinch (palm toward you): both arrive as Start.</summary>
+        static bool MenuInputDown()
+        {
+#if UNITY_EDITOR
+            return false;   // the editor uses the keyboard selector (Esc) instead
+#else
+            try { return OVRInput.GetDown(OVRInput.Button.Start, OVRInput.Controller.All); }
+            catch (Exception) { return false; }
+#endif
+        }
+
+        /// <summary>Gap between the grid's left edge and the Menu button (m).</summary>
+        public const float MenuGap = 0.008f;
+
+        /// <summary>
+        /// Beside the grid's middle row, on the left: on the grid's horizontal axis, not out at a corner, so it
+        /// stays inside the 27° design area that the grid's own corners set (the room sweep measures it).
+        /// <paramref name="layoutHalf"/> is half the widest layout's width (the nine tiles).
+        /// </summary>
+        public static Vector3 MenuCenter(SurfaceFinder.Surface s, float layoutHalf, float size) =>
+            s.Center - s.Right * (layoutHalf + MenuGap + size * 0.5f) + s.Normal * 0.001f;
+
+        /// <summary>The Menu button's four corners (FoV checks).</summary>
+        public static Vector3[] MenuCorners(SurfaceFinder.Surface s, float layoutHalf, float size)
+        {
+            Vector3 c = MenuCenter(s, layoutHalf, size);
+            float h = size * 0.5f;
+            return new[] { c + s.Right * h + s.Away * h, c - s.Right * h + s.Away * h, c + s.Right * h - s.Away * h, c - s.Right * h - s.Away * h };
+        }
+
+        void PlaceMenuButton(SurfaceFinder.Surface s, Quaternion rot, float step)
+        {
+            if (MenuButton == null) return;
+            float half = step + PatchSize * 0.5f;
+            if (Arcade != null) half = Mathf.Max(half, Arcade.TilePitch + Arcade.TileSize * 0.5f);
+            var t = MenuButton.transform;
+            t.SetPositionAndRotation(MenuCenter(s, half, MenuSize), rot);
+            t.localScale = new Vector3(MenuSize, MenuSize, 1f);
+        }
+
+        void UpdateMenuButton(StereoPatch hovered, float dwell, StereoPatch dwellOn)
+        {
+            if (MenuButton == null) return;
+            bool show = MenuAvailable;
+            var r = MenuButton.GetComponent<Renderer>(); if (r != null && r.enabled != show) r.enabled = show;
+            var c = MenuButton.GetComponent<Collider>(); if (c != null && c.enabled != show) c.enabled = show;
+            if (MenuLabel != null && MenuLabel.gameObject.activeSelf != show) MenuLabel.gameObject.SetActive(show);
+            if (MenuFrame != null && MenuFrame.enabled != show) MenuFrame.enabled = show;
+            if (!show) return;
+            MenuButton.Arcsec = 0; MenuButton.MotionArcsec = 0; MenuButton.Decoy = false;
+            MenuButton.Brightness = 0.18f;
+            if (MenuLabel != null && Head != null)
+            {
+                Vector3 pos = MenuButton.transform.position - MenuButton.transform.forward * 0.008f;
+                MenuLabel.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - Head.position, Vector3.up));
+                var style = Options.HighContrast ? FontStyle.Bold : FontStyle.Normal;
+                if (MenuLabel.fontStyle != style) MenuLabel.fontStyle = style;
+            }
+            if (MenuFrame != null)
+            {
+                bool hc = Options.HighContrast;
+                Color col = hovered == MenuButton ? FrameHover : (hc ? FrameIdleHighContrast : FrameIdle);
+                float w = 1f;
+                if (dwellOn == MenuButton && dwell > 0) { col = Color.Lerp(FrameIdle, FrameHover, 0.35f + 0.65f * dwell); w = 1f + 1.2f * dwell; }
+                MenuFrame.startColor = MenuFrame.endColor = col;
+                MenuFrame.widthMultiplier = (frameWidth > 0 ? frameWidth : 0.0025f) * (hc ? 1.8f : 1f) * w;
             }
         }
 
@@ -415,6 +650,8 @@ namespace Cyclopea
         public void StartArcade()
         {
             if (Arcade == null) { StartCue(PreferredCue); return; }
+            if (BreakDue) { EnterBreak(); return; }
+            EndOthers();
             if (Home != null) Home.Hide();
             ClearPatches();
             SetPatchesShown(false);
@@ -432,11 +669,50 @@ namespace Cyclopea
             string text = WhackRound.CardText(r);
             string found = Creatures != null ? Creatures.SessionLine() : "";
             if (found.Length > 0 && text.Split('\n').Length < 6) text += "\n" + found;
-            SetTitle(text);
-            Toast(Home != null ? MenuHint + ", to go on" : "Pinch any square to play again", 9999f);
+            ShowCard(text, arcade: true);
             if (Scores != null) Scores.CountToday();
             ArcadeFinished?.Invoke(r);
         }
+
+        // ---------- Score cards ----------
+        // Every card says where each square goes: Play again (or Check again) | Home | the other game | Options.
+
+        /// <summary>The card on screen came from a Critter Whack round (else from the Depth Check).</summary>
+        public bool CardIsArcade { get; private set; }
+        /// <summary>The card's text (its title), kept so Options can come back to it.</summary>
+        public string CardText { get; private set; } = "";
+        /// <summary>The honest "no depth from two eyes" card: its first square starts one-eye (motion) mode.</summary>
+        public bool CardOffersMotion => state == State.Done && !CardIsArcade && Cue == SessionLog.Cue.Stereo && !lastMeasured;
+
+        void ShowCard(string text, bool arcade)
+        {
+            CardIsArcade = arcade;
+            CardText = text;
+            if (Home != null)
+            {
+                Home.Show(HomeCard.Page.Card);
+                Toast(MenuHint, 9999f);
+            }
+            else
+            {
+                SetTitle(text);
+                Toast("Pinch any square to play again", 9999f);
+            }
+            if (dwellSel != null) dwellSel.ResetDwell();
+            if (Surface != null) Surface.SearchAgain();   // no desk found yet: look again while nothing is running
+        }
+
+        /// <summary>The card's first square: the same again (one-eye mode after an honest "no depth" card).</summary>
+        public void CardAgain()
+        {
+            if (CardIsArcade) StartArcade();
+            else if (BreakDue) EnterBreak();
+            else if (CardOffersMotion) StartCue(SessionLog.Cue.Motion);
+            else Restart();
+        }
+
+        /// <summary>The 10-minute play budget is used up: the next game starts with the rest break.</summary>
+        bool BreakDue => playSeconds >= CapSeconds;
 
         /// <summary>The four squares on or off (they step aside for the arcade's nine tiles).</summary>
         void SetPatchesShown(bool on)
@@ -453,16 +729,18 @@ namespace Cyclopea
         public void ShowHome()
         {
             if (Home == null) { StartAllRungs(); return; }
+            EndOthers();
             state = State.Home;
             ClearPatches();
             Home.Show(HomeCard.Page.Home);
             if (dwellSel != null) dwellSel.ResetDwell();
             Toast(MenuHint, 9999f);
+            if (Surface != null) Surface.SearchAgain();
         }
 
-        /// <summary>Screens that wait for one choice: the notice, the home card, the score card, a finished break.</summary>
-        public bool InMenu => state == State.Intro || state == State.Home || state == State.Done ||
-                              (state == State.Break && Time.time >= breakUntil);
+        /// <summary>Screens that wait for one choice: the notice, the home card, the score card, the menu, a finished break.</summary>
+        public bool InMenu => menuOpen || state == State.Intro || state == State.Home || state == State.Done ||
+                              (state == State.Break && BreakCanEnd);
 
         /// <summary>Look and hold is live: chosen in Options, switched on by the idle assist, or a menu is showing.</summary>
         public bool WantsLookAndHold => Options.LookAndHold || DwellAssist || InMenu;
@@ -486,6 +764,9 @@ namespace Cyclopea
 
         void EnterBreak()
         {
+            if (Home != null) Home.Hide();
+            if (Arcade != null) Arcade.Abort(keepCatches: true);
+            SetPatchesShown(true);
             state = State.Break;
             PlaySfx(b => b.BreakChime);
             breakUntil = Time.time + BreakSeconds;
@@ -547,6 +828,7 @@ namespace Cyclopea
         {
             RequestRefreshRate();
             for (int i = 0; i < Patches.Length; i++) { Patches[i].Index = i; Patches[i].Head = Head; }
+            if (MenuButton != null) { MenuButton.Index = MenuIndex; MenuButton.Head = Head; }
             device = DeviceName(out floorArcsec);
             rig = FindFirstObjectByType<OVRCameraRig>();
             UpdateIpd();
@@ -600,6 +882,7 @@ namespace Cyclopea
 
         public void Restart()
         {
+            EndOthers();
             if (Home != null) Home.Hide();
             sessionId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + rng.Next(1000, 9999);
             subjectId = "P" + PlayerPrefs.GetInt(SubjectKey, 1).ToString("00");
@@ -652,6 +935,7 @@ namespace Cyclopea
                 t.SetPositionAndRotation(s.Center + s.Right * grid[i].x * step + s.Away * grid[i].y * step, rot);
                 t.localScale = new Vector3(PatchSize, PatchSize, 1f);
             }
+            PlaceMenuButton(s, rot, step);
             Vector3 above = s.Center + s.Away * (step * 2f + 0.025f) + s.Normal * 0.01f;
             Quaternion textRot = Quaternion.LookRotation(above - Head.position, Vector3.up);
             if (Title != null) Title.transform.SetPositionAndRotation(above + s.Normal * 0.02f, textRot);
@@ -801,7 +1085,14 @@ namespace Cyclopea
 
         void OnSelected(StereoPatch p, string method)
         {
-            if (Paused) return;
+            if (Paused && !OnlyMenuPaused) return;
+            if (p != null && p == MenuButton) { ToggleMenu(); return; }
+            if (menuOpen)
+            {
+                if (p != null && Home != null && Home.Showing && Array.IndexOf(Patches, p) >= 0) Home.Pick(p.Index, method);
+                if (dwellSel != null) dwellSel.ResetDwell();
+                return;
+            }
             if (state == State.Arcade) { if (Arcade != null) Arcade.Whack(p, method); return; }
             if (state == State.Intro)
             {
@@ -822,17 +1113,19 @@ namespace Cyclopea
             }
             if (state == State.Break)
             {
-                if (Time.time < breakUntil) return;
+                if (!BreakCanEnd) return;
                 playSeconds = 0;
-                Restart();
+                ShowHome();   // rested: back to the home card, where every game starts
                 return;
             }
-            if (state == State.Done && playSeconds >= CapSeconds) { EnterBreak(); return; }
             if (state == State.Done)
             {
-                // After the honest "no stereo" card, the next pinch starts the motion version.
-                if (Cue == SessionLog.Cue.Stereo && !lastMeasured) StartCue(SessionLog.Cue.Motion);
-                else ShowHome();   // the home card: streak, best, what to find next, Play
+                // The card's squares are labelled: again | Home | the other game | Options.
+                if (p != null && Home != null && Home.Showing) Home.Pick(p.Index, method);
+                else if (BreakDue) EnterBreak();
+                else if (Cue == SessionLog.Cue.Stereo && !lastMeasured) StartCue(SessionLog.Cue.Motion);
+                else ShowHome();
+                if (dwellSel != null) dwellSel.ResetDwell();
                 return;
             }
             if (state != State.Trial || p == null) return;
@@ -1160,26 +1453,20 @@ namespace Cyclopea
                 if (best) line += "\nNew personal best!";
             }
             PlaySfx(b => best ? b.PersonalBest : b.ScoreReveal);
-            if (Title != null)
-            {
-                Title.text = practice
-                    ? "Practice: " + onlyRung.Value + "\n" + (profileLine.Length > 0 ? profileLine : "nothing caught")
-                    : measured
-                    ? (motion ? "Motion Depth Score\n" : "Depth Score\n") + line
-                    : unsure
-                    ? "Not sure this time\n" + verdict.Reason + "\nNo score today. Your best is kept."
-                    : motion
-                        ? "Not measured this time.\nMove your head a little more and try again."
-                        : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
-                if (!practice && measured && profileLine.Length > 0) Title.text += "\n" + profileLine;
-                if (Creatures != null) Creatures.Persist();
-                string found = Creatures != null ? Creatures.SessionLine() : "";
-                if (found.Length > 0) Title.text += "\n" + found;
-                // Five lines and more: a little smaller so the card stays inside the comfortable view.
-                if (titleCharSize > 0 && Title.text.Split('\n').Length >= 5) Title.characterSize = titleCharSize * 0.85f;
-            }
-            Toast(!measured && !unsure && !motion && !practice ? "Pinch any square to play with motion instead"
-                  : Home != null ? MenuHint + ", to go on" : "Pinch any square to play again", 9999f);
+            string card = practice
+                ? "Practice: " + onlyRung.Value + "\n" + (profileLine.Length > 0 ? profileLine : "nothing caught")
+                : measured
+                ? (motion ? "Motion Depth Score\n" : "Depth Score\n") + line
+                : unsure
+                ? "Not sure this time\n" + verdict.Reason + "\nNo score today. Your best is kept."
+                : motion
+                    ? "Not measured this time.\nMove your head a little more and try again."
+                    : "Your eyes didn't use depth from two eyes today.\nThat's common, and the game still plays.";
+            if (!practice && measured && profileLine.Length > 0) card += "\n" + profileLine;
+            if (Creatures != null) Creatures.Persist();
+            string found = Creatures != null ? Creatures.SessionLine() : "";
+            if (found.Length > 0) card += "\n" + found;
+            ShowCard(card, arcade: false);   // five lines and more are set a little smaller (SetTitle)
             if (practice) return;   // practice of one rung is not a session result (no score anchor, no leaderboard)
             Finished?.Invoke(new Result
             {
@@ -1199,7 +1486,15 @@ namespace Cyclopea
 
         void Update()
         {
-            if (Paused) return;
+            if (MenuInputDown() && (!Paused || OnlyMenuPaused)) ToggleMenu();
+            if (Paused && !OnlyMenuPaused) return;
+            if (menuOpen)
+            {
+                // Everything waits; only the menu's squares light up as they are pointed at or looked at.
+                UpdateBed();
+                UpdateFrames();
+                return;
+            }
             UpdateIpd();
             if (state == State.Trial || state == State.Feedback) playSeconds += Time.deltaTime;
             if (state == State.RungIntro && Time.time >= stateUntil) StartTrial();
@@ -1207,8 +1502,9 @@ namespace Cyclopea
             if (state == State.Break && Status != null)
             {
                 float left = breakUntil - Time.time;
-                Status.text = left > 0 ? "Back in " + Mathf.FloorToInt(left / 60f) + ":" + (Mathf.CeilToInt(left) % 60).ToString("00")
-                                       : "Pinch any square to play again";
+                string back = "Back in " + Mathf.FloorToInt(left / 60f) + ":" + (Mathf.CeilToInt(left) % 60).ToString("00");
+                Status.text = left <= 0 ? MenuHint + ", to go on"
+                            : BreakCanEnd ? back + "\nor pinch a square to go on now" : back;
             }
             if (state == State.Feedback && Time.time >= stateUntil) NextTrial();
 
@@ -1237,12 +1533,27 @@ namespace Cyclopea
             }
             if (state == State.Arcade && Arcade != null && Arcade.Playing) playSeconds += Time.deltaTime;
 
+            UpdateFrames();
+
+            // Development builds: the tester line. The judge build shows only what a player needs.
+            if (Status != null && Time.time > toastUntil && (state == State.Trial || state == State.Feedback))
+                Status.text = DevControls.FingerSwitches
+                    ? $"{subjectId}   {rung}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
+                    : Creatures != null && Creatures.FoundThisSession > 0 ? "Found " + Creatures.FoundThisSession : "";
+        }
+
+        /// <summary>The squares' frames (hover, look-and-hold fill, right / wrong) and the Menu button's.</summary>
+        void UpdateFrames()
+        {
+            // Behind the menu the squares are plain buttons: no trial colours.
+            State state = menuOpen ? State.Home : this.state;
             StereoPatch hovered = null;
             foreach (var s in Selectors)
                 if (s != null && s.isActiveAndEnabled && s.Hovered != null) { hovered = s.Hovered; break; }
             // Look and hold fills the frame as the gaze holds.
             float dwell = dwellSel != null && dwellSel.isActiveAndEnabled && dwellSel.Hovered != null ? dwellSel.Progress : 0f;
-            int dwellOn = dwell > 0 ? dwellSel.Hovered.Index : -1;
+            int dwellOn = dwell > 0 && Array.IndexOf(Patches, dwellSel.Hovered) >= 0 ? dwellSel.Hovered.Index : -1;
+            UpdateMenuButton(hovered, dwell, dwell > 0 ? dwellSel.Hovered : null);
             bool hc = Options.HighContrast;
             Color idle = hc ? FrameIdleHighContrast : FrameIdle;
             float baseWidth = (frameWidth > 0 ? frameWidth : 0.0025f) * (hc ? 1.8f : 1f);
@@ -1288,20 +1599,14 @@ namespace Cyclopea
                 Frames[i].startColor = Frames[i].endColor = shown;
                 Frames[i].widthMultiplier = baseWidth * w;
             }
-
-            // Development builds: the tester line. The judge build shows only what a player needs.
-            if (Status != null && Time.time > toastUntil && (state == State.Trial || state == State.Feedback))
-                Status.text = DevControls.FingerSwitches
-                    ? $"{subjectId}   {rung}   trial {trialIndex + 1}   {ladder.CurrentArcsec:0}″   {DevControls.Eyes}   {Cue}"
-                    : Creatures != null && Creatures.FoundThisSession > 0 ? "Found " + Creatures.FoundThisSession : "";
         }
 
         /// <summary>The static hisses softly from the squares while there is something hidden in it; fades out otherwise.</summary>
         void UpdateBed()
         {
             if (Bed == null || Bed.clip == null) return;
-            bool on = state == State.Trial || state == State.Feedback || (state == State.Tutorial && tutorialHidden) ||
-                      (state == State.Arcade && Arcade != null && Arcade.Playing);
+            bool on = !menuOpen && (state == State.Trial || state == State.Feedback || (state == State.Tutorial && tutorialHidden) ||
+                                    (state == State.Arcade && Arcade != null && Arcade.Playing));
             float target = on ? BedVolume : 0f;
             Bed.volume = Mathf.MoveTowards(Bed.volume, target, Time.deltaTime * BedVolume / 1.2f);
             if (Bed.volume > 0f && !Bed.isPlaying) { Bed.loop = true; Bed.Play(); }

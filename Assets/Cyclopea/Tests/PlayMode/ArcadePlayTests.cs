@@ -92,9 +92,10 @@ namespace Cyclopea.PlayTests
             Assert.That(s.Creatures.FoundThisSession, Is.GreaterThan(0), "catches go to the field guide");
             Assert.That(a.LevelArcsec, Is.LessThan(1920), "a player who catches everything gets finer critters");
 
-            // Next pick: the home card, with the best round on it.
+            // The card says where each square goes; Home (top right) has the best round on it.
+            Assert.That(s.Home.Labels.Select(l => l.text.Split('\n')[0]), Is.EqualTo(new[] { "Play", "Home", "Depth", "Options" }));
             yield return new WaitForSecondsRealtime(0.4f);
-            s.Choose(0, "test");
+            s.Choose(1, "test");
             Assert.True(s.ShowingHome);
             StringAssert.Contains("Best round " + a.Score.ToString("N0"), s.Title.text);
             Assert.That(s.Home.Labels.Select(l => l.text.Split('\n')[0]), Is.EqualTo(new[] { "Play", "Depth", "Field guide", "Options" }));
@@ -139,6 +140,23 @@ namespace Cyclopea.PlayTests
             // The frame a critter appeared, every tile's dots were redrawn, not just its own.
             float[] after = a.Tiles.Select(t => t.Seed).ToArray();
             Assert.That(Enumerable.Range(0, 9).All(i => after[i] != before[i]), "all nine tiles redraw together");
+            a.Abort();
+        }
+
+        [UnityTest]
+        public IEnumerator TheStaticNeverChangesMoreThanThreeTimesASecondOnItsOwn()
+        {
+            // Photosensitivity: critters appearing, hopping and ducking redraw the whole grid, so those
+            // redraws are spaced at least a third of a second apart however busy the round gets.
+            var s = Session();
+            var a = s.Arcade;
+            s.StartArcade();
+            float until = Time.realtimeSinceStartup + 9f;
+            while (s.InArcade && Time.realtimeSinceStartup < until) yield return null;
+            Assert.That(a.GameRedraws, Is.GreaterThan(4), "critters came and went");
+            Assert.That(a.ShortestGameRedrawGap, Is.GreaterThanOrEqualTo(a.MinRedrawGapSeconds - 0.001f));
+            Assert.That(a.MinRedrawGapSeconds, Is.GreaterThanOrEqualTo(1f / 3f), "3 changes a second at most");
+            Assert.That(a.Escaped, Is.GreaterThan(0), "nobody played: the critters left on their own");
             a.Abort();
         }
 

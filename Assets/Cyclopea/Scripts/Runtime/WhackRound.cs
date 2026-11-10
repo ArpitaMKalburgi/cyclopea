@@ -42,6 +42,15 @@ namespace Cyclopea
 
         [Header("Difficulty")]
         public double StartArcsec = 1920, FloorArcsec = 15;
+        [Tooltip("Photosensitivity: the grid redraws on its own (a critter appears, hops or ducks) at most once per this many " +
+                 "seconds, so the static never changes more than 3 times a second. A catch still answers at once.")]
+        public float MinRedrawGapSeconds = 0.34f;
+        [Tooltip("A brand-new player's critters stay up this much longer; it fades to nothing by BeginnerUntil caught.")]
+        public float BeginnerExtraSeconds = 1.2f;
+        public int BeginnerUntil = 40;
+
+        /// <summary>1 for a brand-new player, 0 from BeginnerUntil critters caught (all rounds together).</summary>
+        public float Beginner => BeginnerUntil <= 0 ? 0f : Mathf.Clamp01(1f - (TotalCaught + Caught) / (float)BeginnerUntil);
 
         public const string BestKey = "cyc_whack_best", TotalKey = "cyc_whack_total", LevelKey = "cyc_whack_level";
         public const int HopperAt = 15, ShyAt = 40, GoldenAt = 80;
@@ -125,6 +134,9 @@ namespace Cyclopea
         {
             Place(s);
             moles.Clear();
+            hidden = false;
+            GameRedraws = 0;
+            ShortestGameRedrawGap = float.PositiveInfinity;
             Score = Combo = BestCombo = Caught = Escaped = Fooled = Whiffs = 0;
             finest = double.NaN;
             double start = PlayerPrefs.HasKey(LevelKey) ? Math.Min(StartArcsec, PlayerPrefs.GetFloat(LevelKey) * 2.0) : StartArcsec;
@@ -143,24 +155,60 @@ namespace Cyclopea
             lastCount = -1;
         }
 
-        /// <summary>Stops the round now without a result (leaving the screen, a break).</summary>
-        public void Abort()
+        /// <summary>
+        /// Stops the round now without a score (leaving from the menu, a break). With <paramref name="keepCatches"/>
+        /// the critters caught so far still count toward the next kind's unlock; no best score is set.
+        /// </summary>
+        public void Abort(bool keepCatches = false)
         {
             if (phase == Phase.Off) return;
             phase = Phase.Off;
+            hidden = false;
+            SetFastHands(false);
             moles.Clear();
             ClearTiles();
             SetTilesShown(false);
+            if (keepCatches && Caught > 0)
+            {
+                PlayerPrefs.SetInt(TotalKey, TotalCaught + Caught);
+                if (stair != null) PlayerPrefs.SetFloat(LevelKey, (float)stair.CurrentArcsec);
+                PlayerPrefs.Save();
+                if (Creatures != null) Creatures.Persist();
+            }
+            if (keepCatches)
+                Debug.Log("[Cyclopea] whack round left: " + Score + " points, caught " + Caught + ", escaped " + Escaped +
+                          ", fooled " + Fooled + ", whiffs " + Whiffs + " (catches kept, no score)");
+        }
+
+        bool hidden;
+
+        /// <summary>The menu is over the grid: the tiles step aside (the clock already waits while the session is paused).</summary>
+        public void SetHidden(bool on)
+        {
+            if (phase == Phase.Off) { hidden = false; return; }
+            hidden = on;
+            SetFastHands(!on && phase == Phase.Play);
+            SetTilesShown(!on);
+            if (!on) RefreshAll();
+        }
+
+        /// <summary>A real (floating) critter is up in this tile right now.</summary>
+        public bool IsRealUp(StereoPatch tile)
+        {
+            if (phase != Phase.Play || tile == null) return false;
+            int t = Array.IndexOf(Tiles, tile);
+            float now = Time.time;
+            return t >= 0 && moles.Exists(m => m.Tile == t && m.Kind != Kind.Trickster && now >= m.Start && now < m.End);
         }
 
         void Update()
         {
             if (phase == Phase.Off) return;
-            if (Session != null && Session.Paused)
+            if ((Session != null && Session.Paused) || hidden)
             {
-                // Headset off or the system menu: the round's clock and every critter wait.
+                // Headset off, the system menu or the game's menu: the round's clock and every critter wait.
                 float d = Time.deltaTime;
-                countdownEnds += d; endsAt += d; nextSpawn += d;
+                countdownEnds += d; endsAt += d; nextSpawn += d; LastActionAt += d;
                 foreach (var m in moles) { m.Start += d; m.End += d; }
                 return;
             }
@@ -180,6 +228,7 @@ namespace Cyclopea
                 if (now >= countdownEnds)
                 {
                     phase = Phase.Play;
+                    SetFastHands(true);
                     startedAt = now;
                     LastActionAt = now;
                     endsAt = now + RoundSeconds;
@@ -199,11 +248,19 @@ namespace Cyclopea
         void Step(float now, float progress)
         {
             bool changed = false;
+            // Changes the game makes by itself wait for the next allowed redraw (at most 3 a second).
+            bool mayRedraw = now - lastRedraw >= MinRedrawGapSeconds;
             for (int i = moles.Count - 1; i >= 0; i--)
             {
                 var m = moles[i];
+                if (!mayRedraw && now >= m.End)
+                {
+                    // Not yet: it stays up until the next redraw, so one eye never sees it go on its own.
+                    m.End = lastRedraw + MinRedrawGapSeconds + 0.001f;
+                    continue;
+                }
                 // A hopper ducks halfway and pops up in a free neighbouring tile.
-                if (m.Kind == Kind.Hopper && !m.Hopped && now >= m.Start + (m.End - m.Start) * 0.5f)
+                if (mayRedraw && m.Kind == Kind.Hopper && !m.Hopped && now >= m.Start + (m.End - m.Start) * 0.5f)
                 {
                     int to = FreeNeighbour(m.Tile);
                     m.Hopped = true;
@@ -227,8 +284,12 @@ namespace Cyclopea
                 }
             }
 
+            // New players get slower critters and fewer at once: finding the one that floats takes a few
+            // rounds to learn (first playtest, Nov 10: 11 caught, 34 escaped). The ease fades by 40 caught.
+            float ease = Beginner;
             int maxUp = progress < 0.3f ? 1 : progress < 0.7f ? 2 : 3;
-            if (now >= nextSpawn && moles.Count < maxUp)
+            if (ease > 0.5f) maxUp = Mathf.Min(maxUp, 2);
+            if (mayRedraw && now >= nextSpawn && moles.Count < maxUp)
             {
                 int tile = FreeTile();
                 if (tile >= 0)
@@ -241,14 +302,15 @@ namespace Cyclopea
                     float up = Mathf.Lerp(2.6f, 1.6f, progress) + (m.Arcsec < 240 ? 0.6f : 0f) + (m.Kind == Kind.Shy ? 0.5f : 0f);
                     if (m.Kind == Kind.Golden) up = 1.4f;
                     if (m.Kind == Kind.Trickster) up = 2.2f;
+                    up += BeginnerExtraSeconds * ease;
                     m.End = now + up;
                     Reshape(Tiles[tile]);
                     moles.Add(m);
                     changed = true;
                 }
-                nextSpawn = now + Mathf.Lerp(1.3f, 0.7f, progress) * (0.8f + 0.4f * (float)rng.NextDouble());
+                nextSpawn = now + Mathf.Lerp(1.3f, 0.7f, progress) * (1f + 0.4f * ease) * (0.8f + 0.4f * (float)rng.NextDouble());
             }
-            if (changed) RefreshAll();
+            if (changed) RefreshAll(byGame: true);
         }
 
         static bool Counts(Kind k) => k == Kind.Normal || k == Kind.Hopper;
@@ -328,6 +390,7 @@ namespace Cyclopea
         void End()
         {
             phase = Phase.Off;
+            SetFastHands(false);
             moles.Clear();
             ClearTiles();
             SetTilesShown(false);
@@ -425,11 +488,52 @@ namespace Cyclopea
             foreach (var t in Tiles) if (t != null) { t.Arcsec = 0; t.MotionArcsec = 0; t.Decoy = false; }
         }
 
-        /// <summary>New dots in all nine tiles at once: one eye sees the whole grid change, never one tile.</summary>
-        void RefreshAll()
+        [Tooltip("Meta's Fast Motion Mode (high-frequency hand tracking) while a round is in play, for fast slaps. Off in " +
+                 "menus and the Depth Check, whose fingertip touches want the steadier default tracking.")]
+        public bool FastHandsInRounds = true;
+        bool fastHands;
+
+        /// <summary>True while this round has asked for Fast Motion Mode (the system treats it as a hint).</summary>
+        public bool FastHands => fastHands;
+
+        void SetFastHands(bool on)
         {
+            on &= FastHandsInRounds;
+            if (on == fastHands) return;
+            fastHands = on;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                var r = OVRPlugin.RequestFastMotionMode(on);
+                Debug.Log("[Cyclopea] fast hands " + (on ? "on" : "off") + " (" + r + ")");
+            }
+            catch (Exception e) { Debug.LogWarning("[Cyclopea] fast hands: " + e.Message); }
+#endif
+        }
+
+        void OnDisable() => SetFastHands(false);
+
+        float lastRedraw = -10f;
+
+        /// <summary>Redraws the game made by itself this round, and the shortest gap between two of them (tests: ≥ MinRedrawGapSeconds).</summary>
+        public int GameRedraws { get; private set; }
+        public float ShortestGameRedrawGap { get; private set; } = float.PositiveInfinity;
+
+        /// <summary>New dots in all nine tiles at once: one eye sees the whole grid change, never one tile.</summary>
+        void RefreshAll(bool byGame = false)
+        {
+            float now = Time.time;
+            if (byGame)
+            {
+                if (GameRedraws > 0) ShortestGameRedrawGap = Mathf.Min(ShortestGameRedrawGap, now - lastGameRedraw);
+                GameRedraws++;
+                lastGameRedraw = now;
+            }
+            lastRedraw = now;
             foreach (var t in Tiles) if (t != null) t.Seed = (float)(rng.NextDouble() * 1000.0);
         }
+
+        float lastGameRedraw = -10f;
 
         /// <summary>A new outline for the next critter in this tile (invisible until it floats).</summary>
         void Reshape(StereoPatch p)
