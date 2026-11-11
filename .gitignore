@@ -127,6 +127,7 @@ __pycache__/
 /Assets/Resources/PerformanceTestRunInfo.json*
 /Tools/device-e2e/
 /Tools/sessions/
+/Tools/logs/
 /Tools/apk-run.txt
 /Tools/run.txt
 /Tools/setup-run.txt
