@@ -37,7 +37,8 @@ Assets/Cyclopea/
     Camouflage (desk palette with guaranteed contrast), Streak (days in a row), VoiceCommands (spoken square choice),
     Creatures (species from lobes, rarity from disparity, field-guide collection),
     Reach (Catch: where a shift is seen in 3D, touch judgement, hold-still detector),
-    Progress (daily bests across days, personal best, graph scale, next goal, streak line)
+    Progress (daily bests across days, personal best, graph scale, next goal, streak line),
+    FrameStats (frame-time percentiles in a fixed histogram), ErrorTally (errors counted, the first of each kind kept, thread-safe)
   Scripts/Runtime/                     one MonoBehaviour per file (Unity only serialises a class whose name matches its file)
     HomeCard                           the daily Depth Check's home: streak, best, next creature; the four squares are its
                                        buttons (Play, one-eye mode, Field guide, Options), so every input reaches every option
@@ -60,16 +61,22 @@ Assets/Cyclopea/
     DeskCamouflage                     round 2 in the desk's colours (Passthrough Camera API, asked for after round 1)
     ScoreAnchor                        today's score left on the desk (persistent spatial anchor) with a two-week graph + streak
     PlatformServices                   entitlement, achievements, days-in-a-row leaderboard (Platform SDK)
+    WhackRound                         Critter Whack: 3×3 tiles, critter kinds, adaptive rise, combos, points that pop up, a streak that
+                                       climbs the scale, the last 10 s a frenzy (×2), a golden preview before goldens unlock
+    PlayLog                            one log per launch: every Critter Whack round (score, catches, inputs, frame-time percentiles,
+                                       health), the first of each error or exception
     TuningPanel                        Immersive Debugger panel (dev builds)
     DevControls                        finger switches + adb file remote (dev builds only)
   Editor/CyclopeaSetup.cs              headless setup (incl. ISDK rig via its wizard, XR Operator, Immersive Debugger), scene, APKs, captures
-  Tests/Editor/                        66 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice,
-                                       creatures, Catch geometry checked by ray tracing, hold-still detector, progress, goals)
-  Tests/PlayMode/                      48 in the real scene: wiring (no missing scripts), simulated sessions through Spot, Sort
+  Tests/Editor/                        81 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice,
+                                       creatures, Catch geometry checked by ray tracing, hold-still detector, progress, goals,
+                                       frame-time percentiles, error tally under threads and floods, the round record)
+  Tests/PlayMode/                      55 in the real scene: wiring (no missing scripts), simulated sessions through Spot, Sort
                                        and Catch, motion mode, notice, tutorial, creatures, pause/resume, rest break, home card,
                                        options, decoys, personal best and graph, text inside the comfortable view,
                                        placement sweep over every MRUK sample room, Critter Whack, health checks,
-                                       the menu from every activity, labelled score cards, one hand = one slap
+                                       the menu from every activity, labelled score cards, one hand = one slap, points and
+                                       streak pitch, frenzy, golden preview, the play log, 20 rounds in a row (soak)
 Tools/
   quest.sh                             install / run / log / sessions / stats / remote / Meta VR CLI perf + fov / OVR Metrics /
                                        XR Operator per-eye check / upload to the Competition channel
@@ -78,7 +85,8 @@ Tools/
   verify_motion.py                     motion mode: the creature slides by the commanded amount with head sway; both eyes identical
   reveal.py                            per-eye pair -> anaglyph + "what your two eyes compare" frame (trailer, gallery)
   room-sweep.md, captures-report.md    latest results
-  stats.py                             test-retest ICC, one-eye control vs chance, decoy trials by eyes, norms comparison (Spot
+  stats.py                             Critter Whack rounds (catch rate, learning, inputs, frame times, errors) from the play logs;
+                                       test-retest ICC, one-eye control vs chance, decoy trials by eyes, norms comparison (Spot
                                        only); Sort and Catch apart
   StaircaseHarness/                    .NET harness for the core without Unity
 web/index.html                         Stereo Secrets in the Quest Browser (WebXR, three.js eye layers): share link + backup stereo path
@@ -91,12 +99,15 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Per-eye shift, production shader through URP | within 0.008 px rms of commanded, from 47.7 px down to 0.1 px |
 | Eyes identical outside the creature | mean abs difference 0.0000 |
 | One eye alone, privileged observer told the outline | 19.5–29.2 % in 4-choice trials (chance 25 %), 40 images per condition |
-| Unit tests in Unity | 76 / 76 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still, progress across days, goals) |
-| Tests in the real scene | 48 / 48 |
+| Unit tests in Unity | 81 / 81 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still, progress across days, goals, frame times, error tally, round record) |
+| Tests in the real scene | 55 / 55 |
 | Photosensitivity | critters appearing, hopping and ducking redraw the whole grid at most 3 times a second (shortest gap measured over a round ≥ 0.34 s); a player's own catch still answers at once |
 | Menu inside the narrow field of view | across all 87 rooms and 1,372 seats, the Menu button's widest corner is 25.2° from the gaze centre (design area 27°) |
 | A way back from anywhere | the Menu square beside the grid (also ☰, the left-hand menu pinch, Esc) pauses a round, the Depth Check or the tutorial: the round's clock and critters wait, nothing floats behind the labels, and Resume puts back the same trial or the same time left; Home and start over keep the round's catches but set no best; Options' Back returns to the menu; every score card labels its squares (again, Home, the other game, Options). Taking the headset off or opening the system menu mid-game opens the game's menu, so the player comes back to "Paused" and resumes by choice, with nothing chosen while the headset is off |
 | One hand, one slap | fingertips on a critter with the palm landing first on the empty tile beside it: 1 caught, 0 empty taps (first playtest: 41 empty taps in a round from palms counted as second picks) |
+| Every catch answers, every round builds | the points pop up from the caught tile and fade within a second (text only, so the static still changes at most 3 times a second); four in a row sound three semitones higher and show ×2, an empty slap starts the scale again; the last seconds are a frenzy worth double, with the HUD saying so; a golden preview rises before goldens unlock and says "Golden! +500"; none of it in rounds too short to have it |
+| Every round on record | a round to the clock and a round left from the menu are both in the launch's play log with their inputs, frame-time percentiles and mean fps; an error logged mid-round is counted in that round and kept once with where it happened; the file on disk holds every line |
+| Long play, bounded | frame times in a fixed histogram (10 simulated hours, the same size); 5,000 different errors keep 20 kinds and count all; 20 Critter Whack rounds back to back in the real scene leave no objects behind, keep the managed heap flat, never overflow the nest, and log all 20 rounds |
 | Scene wiring | every square is an ISDK ray + gaze target; no missing scripts; all input modes wired |
 | Whole session in the real scene, simulated 60″ observer | Spot completes with a Depth Score of 93″ (56 trials, 4 of them decoy checks; 83–93″ across runs, the session's random draws differ); goes on to Sort (81″) and Catch (10 of 11); fakes ignored 4 of 4; one log summary per rung |
 | Placement in rooms never seen (all MRUK sample rooms) | 87 rooms, 1,372 seats, 0 invalid; widest grid corner 26.1°, title 24.6° (Glasses design area 27°); Meta XR Audio room model fits every room |

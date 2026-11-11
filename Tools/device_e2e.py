@@ -194,6 +194,20 @@ def main():
     verdicts = re.findall(r"\[Cyclopea\] verdict ([^\r\n]+)", game_log)
     note(any(v.startswith(("Measured", "AtFloor")) for v in verdicts), f"verdict: {verdicts[-1] if verdicts else 'none logged'}")
 
+    # The play log: every Critter Whack round with the frame times the game measured itself.
+    plays = re.findall(r"\[Cyclopea\] play log: round (\d+) \((\w+), (\d+) points, (.*?), errors (\d+)\)", game_log)
+    note(bool(plays), f"play log: {len(plays)} Critter Whack round(s) recorded on the headset")
+    for n, ended, pts, frames, errs in plays:
+        m = re.search(r"p95 ([\d.]+) ms, p99 ([\d.]+) ms, max ([\d.]+) ms, ([\d.]+) % late at (\d+) Hz \((\d+) frames\)", frames)
+        if m:
+            p95, p99, mx, late, hz, count = float(m.group(1)), float(m.group(2)), float(m.group(3)), float(m.group(4)), int(m.group(5)), int(m.group(6))
+            note(p95 <= 1000 / 60 + 0.25, f"round {n} ({ended}, {pts} points): 95 % of {count} frames at 60 fps or better "
+                 f"(p95 {p95} ms, p99 {p99} ms, max {mx} ms, {late} % late at {hz} Hz)")
+        note(errs == "0", f"round {n}: no errors logged during the round ({errs})")
+    frenzy = re.findall(r"\[Cyclopea\] frenzy: ", game_log)
+    full_rounds = [p for p in plays if p[1] == "clock"]
+    note(len(frenzy) >= len(full_rounds), f"frenzy reached in {len(frenzy)} of {len(full_rounds)} round(s) played to the clock")
+
     sessions = out / "sessions"
     sessions.mkdir(exist_ok=True)
     adb("pull", f"/sdcard/Android/data/{PKG}/files/sessions/.", str(sessions), timeout=120)

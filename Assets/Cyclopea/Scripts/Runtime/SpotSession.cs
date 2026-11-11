@@ -712,7 +712,7 @@ namespace Cyclopea
         }
 
         /// <summary>The 10-minute play budget is used up: the next game starts with the rest break.</summary>
-        bool BreakDue => playSeconds >= CapSeconds;
+        public bool BreakDue => playSeconds >= CapSeconds;
 
         /// <summary>The four squares on or off (they step aside for the arcade's nine tiles).</summary>
         void SetPatchesShown(bool on)
@@ -875,6 +875,8 @@ namespace Cyclopea
             Restart();
         }
         public string LogPath => filePath;
+        /// <summary>"Quest3 / Oculus Quest" (the headset type and model; "Editor" in the editor).</summary>
+        public string DeviceLabel => string.IsNullOrEmpty(device) ? DeviceName(out _) : device;
         public void Choose(int index, string method = "script")
         {
             if (index >= 0 && index < Patches.Length) OnSelected(Patches[index], method);

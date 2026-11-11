@@ -60,8 +60,101 @@ namespace Cyclopea.Core
             public int DirtyTrials;           // trials not counted because a health fault touched them
         }
 
+        /// <summary>One Critter Whack round: how it went, how it was played, and how the headset ran during it.</summary>
+        public sealed class Round
+        {
+            public string SessionId;          // the app launch (one play log per launch)
+            public string SubjectId;
+            public string Device;
+            public DateTime UtcStart;
+            public int Index;                 // rounds this launch, from 1
+            public string Ended = "clock";    // clock / left (menu, break, headset off then Home)
+            public double Seconds;            // in play (pauses not counted)
+            public int Score, Caught, Escaped, Fooled, Whiffs, BestCombo, TotalCaught, FrenzyCaught, Golden;
+            public bool PersonalBest;
+            public double FinestArcsec = double.NaN;
+            public double FinestMm = double.NaN;
+            public double LevelArcsec;
+            public double ViewingDistanceM;
+            public double Beginner;           // the new-player ease at the start (1 new, 0 from 40 caught)
+            public Cue Cue;
+            public string Inputs = "";        // "slap:21,pinch:2"
+            public string Surface = "";       // desk / table / easel ... (where the grid lay)
+            public bool FastHands;
+            public FrameStats Frames;
+            public bool Clean = true;         // false: a critical health fault happened during the round
+            public int Errors;                // errors and exceptions logged by the app during the round
+        }
+
         readonly List<string> lines = new List<string>();
         public IReadOnlyList<string> Lines => lines;
+
+        public void Add(Round r)
+        {
+            var f = r.Frames;
+            lines.Add(
+                "{" +
+                S("type", "round") + "," +
+                S("session", r.SessionId) + "," +
+                S("subject", r.SubjectId) + "," +
+                S("device", r.Device) + "," +
+                S("utc", r.UtcStart.ToString("o", CultureInfo.InvariantCulture)) + "," +
+                N("i", r.Index) + "," +
+                S("ended", r.Ended) + "," +
+                N("seconds", Math.Round(r.Seconds, 2)) + "," +
+                N("score", r.Score) + "," +
+                N("caught", r.Caught) + "," +
+                N("escaped", r.Escaped) + "," +
+                N("fooled", r.Fooled) + "," +
+                N("whiffs", r.Whiffs) + "," +
+                N("best_combo", r.BestCombo) + "," +
+                N("frenzy_caught", r.FrenzyCaught) + "," +
+                N("golden", r.Golden) + "," +
+                N("total_caught", r.TotalCaught) + "," +
+                B("personal_best", r.PersonalBest) + "," +
+                (double.IsNaN(r.FinestArcsec) ? "\"finest_arcsec\":null" : N("finest_arcsec", r.FinestArcsec)) + "," +
+                (double.IsNaN(r.FinestMm) ? "\"finest_mm\":null" : N("finest_mm", Math.Round(r.FinestMm, 2))) + "," +
+                N("level_arcsec", Math.Round(r.LevelArcsec, 1)) + "," +
+                N("z_m", Math.Round(r.ViewingDistanceM, 3)) + "," +
+                N("beginner", Math.Round(r.Beginner, 2)) + "," +
+                S("cue", r.Cue.ToString()) + "," +
+                S("inputs", r.Inputs) + "," +
+                S("surface", r.Surface) + "," +
+                B("fast_hands", r.FastHands) + "," +
+                B("clean", r.Clean) + "," +
+                N("errors", r.Errors) +
+                (f != null && f.Count > 0
+                    ? "," + N("frames", f.Count) + "," + N("hz", Math.Round(f.RefreshHz, 1)) + "," +
+                      N("fps_mean", Math.Round(f.MeanFps, 1)) + "," + N("ms_p50", f.Percentile(0.5)) + "," +
+                      N("ms_p95", f.Percentile(0.95)) + "," + N("ms_p99", f.Percentile(0.99)) + "," +
+                      N("ms_max", Math.Round(f.MaxMs, 2)) + "," + N("late_pct", Math.Round(f.LatePercent, 2))
+                    : "") +
+                "}");
+        }
+
+        /// <summary>The app launch: what it ran on, once at the top of a play log.</summary>
+        public void AddApp(string sessionId, DateTime utc, string device, string version, string build, double refreshHz) => lines.Add(
+            "{" +
+            S("type", "app") + "," +
+            S("session", sessionId) + "," +
+            S("utc", utc.ToString("o", CultureInfo.InvariantCulture)) + "," +
+            S("device", device) + "," +
+            S("version", version) + "," +
+            S("build", build) + "," +
+            N("hz", Math.Round(refreshHz, 1)) +
+            "}");
+
+        /// <summary>An error or exception the app logged (the first of its kind; repeats are counted in Count).</summary>
+        public void AddError(string sessionId, DateTime utc, string level, string message, string where, int count) => lines.Add(
+            "{" +
+            S("type", "error") + "," +
+            S("session", sessionId) + "," +
+            S("utc", utc.ToString("o", CultureInfo.InvariantCulture)) + "," +
+            S("level", level) + "," +
+            S("message", message) + "," +
+            S("where", where) + "," +
+            N("count", count) +
+            "}");
 
         public void Add(Trial t) => lines.Add(
             "{" +

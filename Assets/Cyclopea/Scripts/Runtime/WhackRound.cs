@@ -49,6 +49,20 @@ namespace Cyclopea
         public float BeginnerExtraSeconds = 1.2f;
         public int BeginnerUntil = 40;
 
+        [Header("Fun")]
+        [Tooltip("The last seconds of a round are a frenzy: points ×2, critters come faster, the clock ticks. " +
+                 "Only in rounds longer than twice this.")]
+        public float FrenzySeconds = 10f;
+        [Tooltip("Before golden critters are unlocked, one golden preview critter per round shows up in this " +
+                 "window (seconds into play), at the player's own level: a surprise worth 500.")]
+        public Vector2 PreviewGoldenWindow = new Vector2(20f, 40f);
+        [Tooltip("The preview only comes in rounds at least this long (tests' short rounds stay predictable).")]
+        public float PreviewMinRoundSeconds = 45f;
+        [Tooltip("Each catch in a streak sounds one semitone higher, up to this many.")]
+        public int ComboSemitones = 7;
+        [Tooltip("Points float up from the tile that was caught.")]
+        public bool PointPopups = true;
+
         /// <summary>1 for a brand-new player, 0 from BeginnerUntil critters caught (all rounds together).</summary>
         public float Beginner => BeginnerUntil <= 0 ? 0f : Mathf.Clamp01(1f - (TotalCaught + Caught) / (float)BeginnerUntil);
 
@@ -61,9 +75,19 @@ namespace Cyclopea
             public bool PersonalBest;
             public double FinestArcsec;   // finest rise caught (NaN if none)
             public double ViewingDistanceM;
+            // For the play log (observability): how the round ended and was played, and how the headset ran.
+            public string Ended;          // "clock", or "left" (the menu's Home or start over, a break)
+            public double Seconds;        // in play, pauses not counted
+            public int FrenzyCaught, Golden;
+            public double LevelArcsec, Beginner;
+            public string Inputs;         // "slap:21,pinch:2"
+            public bool FastHands, Clean;
+            public FrameStats Frames;
         }
 
         public event Action<Result> Finished;
+        /// <summary>Every round that was played, finished by the clock or left from the menu (the play log listens).</summary>
+        public event Action<Result> Recorded;
 
         enum Phase { Off, Countdown, Play }
         Phase phase = Phase.Off;
@@ -75,6 +99,7 @@ namespace Cyclopea
             public float Start, End;
             public double Arcsec;
             public bool Hopped;
+            public bool Preview;      // the golden preview before goldens are unlocked
         }
 
         readonly List<Mole> moles = new List<Mole>();
@@ -86,6 +111,27 @@ namespace Cyclopea
         float countdownEnds, endsAt, nextSpawn, startedAt;
         int lastCount = -1;
         double finest = double.NaN;
+
+        // What the play log records about a round, and the frenzy / golden preview / pop-ups.
+        readonly FrameStats frames = new FrameStats();
+        readonly Dictionary<string, int> inputs = new Dictionary<string, int>();
+        float playSeconds, roundStartTime, previewAt = -1f;
+        double beginnerAtStart;
+        bool skipFrame, frenzyOn, previewDone;
+        int lastTick = -1;
+
+        /// <summary>This round's frame times so far (the play log and tests read it).</summary>
+        public FrameStats FrameTimes => frames;
+        /// <summary>The round is in its last FrenzySeconds: points ×2.</summary>
+        public bool Frenzy => phase == Phase.Play && !NoClock && RoundSeconds > 2f * FrenzySeconds && TimeLeft <= FrenzySeconds;
+        public int FrenzyCaught { get; private set; }
+        public int GoldenCaught { get; private set; }
+        /// <summary>The last pop-up's words (tests).</summary>
+        public string LastPopup { get; private set; } = "";
+        /// <summary>The pitch the last catch sounded at (1 = the first catch of a streak).</summary>
+        public float LastCatchPitch { get; private set; } = 1f;
+        /// <summary>The preview golden critter of this round has shown up.</summary>
+        public bool PreviewShown => previewDone;
 
         public bool Running => phase != Phase.Off;
         public bool Playing => phase == Phase.Play;
@@ -112,6 +158,15 @@ namespace Cyclopea
             return -1;
         }
 
+        /// <summary>For tests: whether any critter (fakes too) is up in this tile now, and its kind.</summary>
+        public bool TryKindAt(int tile, out Kind kind)
+        {
+            float now = Time.time;
+            var m = moles.Find(x => x.Tile == tile && now >= x.Start && now < x.End);
+            kind = m != null ? m.Kind : Kind.Normal;
+            return m != null;
+        }
+
         /// <summary>Every tile with a real (floating) critter up right now.</summary>
         public void RealUp(List<int> into)
         {
@@ -125,6 +180,8 @@ namespace Cyclopea
             if (phase == Phase.Off) SetTilesShown(false);
             if (Tiles != null && Session != null) foreach (var t in Tiles) if (t != null && t.Head == null) t.Head = Session.Head;
             if (Tiles != null) RefreshAll();
+            // The pop-ups exist before play, so nothing is built mid-round (no hitch on a catch).
+            while (PointPopups && pops.Count < PopPool) { var p = MakePop(); if (p == null) break; pops.Add(p); }
         }
 
         // ---------- Round ----------
@@ -135,10 +192,25 @@ namespace Cyclopea
             Place(s);
             moles.Clear();
             hidden = false;
+            fastHandsUsed = false;
             GameRedraws = 0;
             ShortestGameRedrawGap = float.PositiveInfinity;
             Score = Combo = BestCombo = Caught = Escaped = Fooled = Whiffs = 0;
+            FrenzyCaught = GoldenCaught = 0;
             finest = double.NaN;
+            playSeconds = 0;
+            inputs.Clear();
+            frames.Reset(RefreshHz());
+            roundStartTime = Time.time;
+            beginnerAtStart = Beginner;
+            frenzyOn = false;
+            lastTick = -1;
+            previewDone = false;
+            // Not unlocked yet: one golden critter shows up as a preview, somewhere in the middle of the round.
+            previewAt = TotalCaught < GoldenAt && RoundSeconds >= PreviewMinRoundSeconds && !NoClock
+                ? Mathf.Lerp(PreviewGoldenWindow.x, PreviewGoldenWindow.y, (float)rng.NextDouble())
+                : -1f;
+            HidePopups();
             double start = PlayerPrefs.HasKey(LevelKey) ? Math.Min(StartArcsec, PlayerPrefs.GetFloat(LevelKey) * 2.0) : StartArcsec;
             stair = new Staircase(new Staircase.Config
             {
@@ -168,6 +240,9 @@ namespace Cyclopea
             moles.Clear();
             ClearTiles();
             SetTilesShown(false);
+            HidePopups();
+            if (keepCatches)
+                Recorded?.Invoke(MakeResult("left", TotalCaught + Caught, false));
             if (keepCatches && Caught > 0)
             {
                 PlayerPrefs.SetInt(TotalKey, TotalCaught + Caught);
@@ -189,6 +264,7 @@ namespace Cyclopea
             hidden = on;
             SetFastHands(!on && phase == Phase.Play);
             SetTilesShown(!on);
+            if (on) HidePopups();
             if (!on) RefreshAll();
         }
 
@@ -210,9 +286,11 @@ namespace Cyclopea
                 float d = Time.deltaTime;
                 countdownEnds += d; endsAt += d; nextSpawn += d; LastActionAt += d;
                 foreach (var m in moles) { m.Start += d; m.End += d; }
+                skipFrame = true;   // the first frame back may span the time away: not a frame-rate sample
                 return;
             }
             float now = Time.time;
+            UpdatePopups(now);
             if (phase == Phase.Countdown)
             {
                 int left = Mathf.CeilToInt(countdownEnds - now);
@@ -229,6 +307,7 @@ namespace Cyclopea
                 {
                     phase = Phase.Play;
                     SetFastHands(true);
+                    skipFrame = true;
                     startedAt = now;
                     LastActionAt = now;
                     endsAt = now + RoundSeconds;
@@ -237,6 +316,11 @@ namespace Cyclopea
                 }
                 return;
             }
+
+            playSeconds += Time.deltaTime;
+            if (skipFrame) skipFrame = false;
+            else frames.Add(Time.unscaledDeltaTime);
+            UpdateFrenzy();
 
             float progress = NoClock ? 0.5f : Mathf.Clamp01((now - startedAt) / RoundSeconds);
             Step(now, progress);
@@ -280,6 +364,7 @@ namespace Cyclopea
                     Escaped++;
                     Combo = 0;
                     if (Counts(m.Kind)) stair.Respond(false);
+                    if (m.Kind == Kind.Golden && Session != null) Session.Toast("A golden one got away!", 1.8f);
                     if (Creatures != null && Sounds != null) Creatures.SayAt(Sounds.CreatureDive, Tiles[m.Tile].transform.position);
                 }
             }
@@ -294,21 +379,28 @@ namespace Cyclopea
                 int tile = FreeTile();
                 if (tile >= 0)
                 {
-                    var m = new Mole { Tile = tile, Kind = PickKind(now - startedAt), Start = now };
+                    bool preview = !previewDone && previewAt >= 0f && playSeconds >= previewAt;
+                    var m = new Mole { Tile = tile, Kind = preview ? Kind.Golden : PickKind(now - startedAt), Start = now, Preview = preview };
+                    if (preview) previewDone = true;
                     double level = stair.CurrentArcsec;
+                    // A preview golden floats at the player's own level: a surprise, not a test they can't pass yet.
                     m.Arcsec = m.Kind == Kind.Shy ? Math.Max(FloorArcsec, level * 0.6)
-                             : m.Kind == Kind.Golden ? Math.Max(FloorArcsec, level * 0.5)
+                             : m.Kind == Kind.Golden && !m.Preview ? Math.Max(FloorArcsec, level * 0.5)
                              : level;
                     float up = Mathf.Lerp(2.6f, 1.6f, progress) + (m.Arcsec < 240 ? 0.6f : 0f) + (m.Kind == Kind.Shy ? 0.5f : 0f);
-                    if (m.Kind == Kind.Golden) up = 1.4f;
+                    if (m.Kind == Kind.Golden && !m.Preview) up = 1.4f;
                     if (m.Kind == Kind.Trickster) up = 2.2f;
                     up += BeginnerExtraSeconds * ease;
                     m.End = now + up;
                     Reshape(Tiles[tile]);
                     moles.Add(m);
                     changed = true;
+                    // A golden one shimmers as it rises: you hear that one is up, never where (only two eyes find it).
+                    if (m.Kind == Kind.Golden && Sounds != null && Audio != null && Sounds.NewKind != null) Audio.PlayOneShot(Sounds.NewKind, 0.6f);
                 }
-                nextSpawn = now + Mathf.Lerp(1.3f, 0.7f, progress) * (1f + 0.4f * ease) * (0.8f + 0.4f * (float)rng.NextDouble());
+                float gap = Mathf.Lerp(1.3f, 0.7f, progress) * (1f + 0.4f * ease) * (0.8f + 0.4f * (float)rng.NextDouble());
+                if (Frenzy) gap *= 0.75f;
+                nextSpawn = now + gap;
             }
             if (changed) RefreshAll(byGame: true);
         }
@@ -345,6 +437,8 @@ namespace Cyclopea
             if (now - lastPick[t] < DebounceSeconds) return;
             lastPick[t] = now;
             LastActionAt = now;
+            string how = string.IsNullOrEmpty(method) ? "other" : method;
+            inputs[how] = inputs.TryGetValue(how, out int n) ? n + 1 : 1;
 
             Mole m = moles.Find(x => x.Tile == t && now >= x.Start && now < x.End);
             if (m == null)
@@ -362,6 +456,7 @@ namespace Cyclopea
                 Combo = 0;
                 Score = Math.Max(0, Score - 150);
                 Flash(t, new Color(1f, 0.6f, 0.2f, 1f));
+                Popup(t, "-150", new Color(1f, 0.62f, 0.25f, 1f));
                 Play(Sounds != null ? Sounds.PickWrong : null);
                 Session.Toast("Flat fake! Real critters float.", 2f);
                 RefreshAll();
@@ -372,15 +467,29 @@ namespace Cyclopea
             Combo++;
             BestCombo = Math.Max(BestCombo, Combo);
             int pts = m.Kind == Kind.Golden ? 500 : m.Kind == Kind.Shy ? 200 : m.Kind == Kind.Hopper ? 150 : 100;
-            Score += pts * Multiplier;
+            bool frenzy = Frenzy;
+            int gained = pts * Multiplier * (frenzy ? 2 : 1);
+            Score += gained;
+            if (frenzy) FrenzyCaught++;
+            if (m.Kind == Kind.Golden) GoldenCaught++;
             if (Counts(m.Kind)) stair.Respond(true);
             if (double.IsNaN(finest) || m.Arcsec < finest) finest = m.Arcsec;
             Flash(t, new Color(0.45f, 0.75f, 1f, 1f));
-            Play(Sounds != null ? (m.Kind == Kind.Golden ? Sounds.PersonalBest : Sounds.PickRight) : null);
+            string mult = Multiplier > 1 || frenzy ? "  ×" + (Multiplier * (frenzy ? 2 : 1)) : "";
+            if (m.Kind == Kind.Golden)
+            {
+                Popup(t, "Golden!\n+" + gained.ToString("N0"), new Color(1f, 0.84f, 0.3f, 1f));
+            }
+            else Popup(t, "+" + gained.ToString("N0") + mult, frenzy ? new Color(1f, 0.55f, 0.75f, 1f) : new Color(0.62f, 0.85f, 1f, 1f));
+            // A streak climbs the scale: each catch in a row sounds a semitone higher.
+            LastCatchPitch = Mathf.Pow(2f, Mathf.Min(Combo - 1, Mathf.Max(0, ComboSemitones)) / 12f);
+            PlayCatch(Sounds != null ? (m.Kind == Kind.Golden ? Sounds.PersonalBest : Sounds.PickRight) : null, m.Kind == Kind.Golden ? 1f : LastCatchPitch);
             // It comes out of the dots where it floated and goes to the nest (or onto the finger that caught it).
             var tile = Tiles[t];
             tile.Arcsec = 0; tile.MotionArcsec = 0;
             if (Creatures != null) Creatures.Reveal(tile, m.Arcsec, m.Arcsec, true);
+            // After the reveal, so a "new in your field guide" line doesn't push it off: the preview is the rarer news.
+            if (m.Preview && Session != null) Session.Toast("A golden critter! They come for good at " + GoldenAt + " caught.", 3f);
             RefreshAll();
         }
 
@@ -394,6 +503,7 @@ namespace Cyclopea
             moles.Clear();
             ClearTiles();
             SetTilesShown(false);
+            HidePopups();
 
             int best = Best;
             bool pb = Score > best && Score > 0;
@@ -405,12 +515,158 @@ namespace Cyclopea
             if (Creatures != null) Creatures.Persist();
             Play(Sounds != null ? (pb ? Sounds.PersonalBest : Sounds.ScoreReveal) : null);
             Debug.Log("[Cyclopea] whack round: " + Score + " points, caught " + Caught + ", escaped " + Escaped +
-                      ", fooled " + Fooled + ", whiffs " + Whiffs + ", best combo " + BestCombo + ", level " + LevelArcsec.ToString("0") + "″");
-            Finished?.Invoke(new Result
+                      ", fooled " + Fooled + ", whiffs " + Whiffs + ", best combo " + BestCombo + ", level " + LevelArcsec.ToString("0") + "″" +
+                      ", frenzy " + FrenzyCaught + ", golden " + GoldenCaught);
+            Debug.Log("[Cyclopea] round frames: " + frames.Line());
+            var result = MakeResult("clock", total, pb);
+            Recorded?.Invoke(result);
+            Finished?.Invoke(result);
+        }
+
+        Result MakeResult(string ended, int total, bool pb) => new Result
+        {
+            Score = Score, Caught = Caught, Escaped = Escaped, Fooled = Fooled, Whiffs = Whiffs, BestCombo = BestCombo,
+            TotalCaught = total, PersonalBest = pb, FinestArcsec = finest, ViewingDistanceM = MeanDistance(),
+            Ended = ended, Seconds = playSeconds, FrenzyCaught = FrenzyCaught, Golden = GoldenCaught,
+            LevelArcsec = LevelArcsec, Beginner = beginnerAtStart, Inputs = InputsLine(), FastHands = fastHandsUsed,
+            Clean = Health.CriticalFaultAt < roundStartTime, Frames = frames
+        };
+
+        string InputsLine()
+        {
+            var l = new List<KeyValuePair<string, int>>(inputs);
+            l.Sort((a, b) => b.Value != a.Value ? b.Value.CompareTo(a.Value) : string.CompareOrdinal(a.Key, b.Key));
+            var parts = new List<string>();
+            foreach (var kv in l) parts.Add(kv.Key + ":" + kv.Value);
+            return string.Join(",", parts);
+        }
+
+        static float RefreshHz()
+        {
+            try { float hz = UnityEngine.XR.XRDevice.refreshRate; if (hz > 1) return hz; } catch (Exception) { }
+            var r = Screen.currentResolution.refreshRateRatio.value;
+            return r > 1 ? (float)r : 72f;
+        }
+
+        // ---------- Frenzy ----------
+
+        void UpdateFrenzy()
+        {
+            bool on = Frenzy;
+            if (on && !frenzyOn)
             {
-                Score = Score, Caught = Caught, Escaped = Escaped, Fooled = Fooled, Whiffs = Whiffs, BestCombo = BestCombo,
-                TotalCaught = total, PersonalBest = pb, FinestArcsec = finest, ViewingDistanceM = MeanDistance()
-            });
+                frenzyOn = true;
+                Play(Sounds != null ? Sounds.LevelUp : null);
+                Debug.Log("[Cyclopea] frenzy: last " + FrenzySeconds.ToString("0") + " s, points ×2");
+            }
+            if (!on) return;
+            // The last five seconds tick.
+            int secs = Mathf.CeilToInt(TimeLeft);
+            if (secs <= 5 && secs != lastTick && secs > 0)
+            {
+                lastTick = secs;
+                if (Sounds != null && Audio != null && Sounds.UiSelect != null) Audio.PlayOneShot(Sounds.UiSelect, 0.5f);
+            }
+        }
+
+        // ---------- Pop-ups and the catch sound ----------
+        // Points float up from the tile that was caught and fade. Text only: the static itself never changes for
+        // them, so they add nothing to the three-redraws-a-second limit and nothing one eye could use.
+
+        sealed class Pop { public TextMesh Text; public LegibleText Legible; public Vector3 From, Up; public float Born; public Color Color; }
+        readonly List<Pop> pops = new List<Pop>();
+        const float PopSeconds = 0.9f, PopRise = 0.035f;
+        const int PopPool = 4;
+        AudioSource catchAudio;
+
+        void Popup(int tile, string words, Color c)
+        {
+            LastPopup = words;
+            if (!PointPopups || Tiles == null || tile < 0 || tile >= Tiles.Length || Tiles[tile] == null) return;
+            Pop p = null;
+            foreach (var q in pops) if (!q.Text.gameObject.activeSelf) { p = q; break; }
+            if (p == null)
+            {
+                if (pops.Count >= PopPool) { p = pops[0]; foreach (var q in pops) if (q.Born < p.Born) p = q; }
+                else { p = MakePop(); if (p == null) return; pops.Add(p); }
+            }
+            var t = Tiles[tile].transform;
+            Vector3 normal = -t.forward;
+            p.From = t.position + normal * 0.012f;
+            p.Up = normal;
+            p.Born = Time.time;
+            p.Color = c;
+            p.Text.text = words;
+            p.Text.gameObject.SetActive(true);
+            PlacePop(p, 0f);
+        }
+
+        Pop MakePop()
+        {
+            var go = new GameObject("Points");
+            go.transform.SetParent(transform, false);
+            var tm = go.AddComponent<TextMesh>();
+            var src = Session != null && Session.Status != null ? Session.Status : null;
+            tm.font = src != null && src.font != null ? src.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (tm.font == null) { Destroy(go); return null; }
+            tm.fontSize = 64;
+            tm.characterSize = 0.001f;
+            tm.anchor = TextAnchor.LowerCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.fontStyle = FontStyle.Bold;
+            go.GetComponent<MeshRenderer>().sharedMaterial = tm.font.material;
+            var leg = go.AddComponent<LegibleText>();
+            leg.Head = Session != null ? Session.Head : null;
+            leg.TargetDmm = 20f;
+            go.SetActive(false);
+            return new Pop { Text = tm, Legible = leg };
+        }
+
+        void UpdatePopups(float now)
+        {
+            foreach (var p in pops)
+            {
+                if (!p.Text.gameObject.activeSelf) continue;
+                float age = (now - p.Born) / PopSeconds;
+                if (age >= 1f) { p.Text.gameObject.SetActive(false); continue; }
+                PlacePop(p, age);
+            }
+        }
+
+        void PlacePop(Pop p, float age)
+        {
+            // Less movement: the points stay where they appear and only fade.
+            float rise = Options.LessMovement ? 0f : PopRise * (1f - (1f - age) * (1f - age));
+            Vector3 pos = p.From + p.Up * rise;
+            var head = Session != null ? Session.Head : null;
+            p.Text.transform.SetPositionAndRotation(pos, head != null ? Quaternion.LookRotation(pos - head.position, Vector3.up) : Quaternion.identity);
+            var c = p.Color;
+            c.a = age < 0.6f ? 1f : Mathf.Clamp01(1f - (age - 0.6f) / 0.4f);
+            p.Text.color = c;
+        }
+
+        void HidePopups()
+        {
+            foreach (var p in pops) if (p.Text != null) p.Text.gameObject.SetActive(false);
+        }
+
+        /// <summary>Pop-ups showing now (tests).</summary>
+        public int PopupsShown { get { int n = 0; foreach (var p in pops) if (p.Text != null && p.Text.gameObject.activeSelf) n++; return n; } }
+
+        void PlayCatch(AudioClip c, float pitch)
+        {
+            if (c == null || Audio == null) return;
+            if (catchAudio == null)
+            {
+                // Its own source, so a raised pitch never bends the other sounds playing.
+                catchAudio = gameObject.AddComponent<AudioSource>();
+                catchAudio.playOnAwake = false;
+                catchAudio.spatialBlend = Audio.spatialBlend;
+                catchAudio.outputAudioMixerGroup = Audio.outputAudioMixerGroup;
+                catchAudio.volume = Audio.volume;
+            }
+            catchAudio.pitch = pitch;
+            catchAudio.PlayOneShot(c);
         }
 
         /// <summary>Tests: end the round now as if the clock ran out.</summary>
@@ -428,6 +684,7 @@ namespace Cyclopea
         {
             int secs = Mathf.CeilToInt(TimeLeft);
             string hud = Score.ToString("N0") + (Multiplier > 1 ? "   ×" + Multiplier : "") + "\n" + (secs / 60) + ":" + (secs % 60).ToString("00");
+            if (Frenzy) hud = "Frenzy! Points ×2\n" + hud;
             // A new player keeps the instruction in view until the first few catches.
             if (TotalCaught + Caught < 3) hud = Verb() + "\n" + hud;
             return hud;
@@ -491,7 +748,7 @@ namespace Cyclopea
         [Tooltip("Meta's Fast Motion Mode (high-frequency hand tracking) while a round is in play, for fast slaps. Off in " +
                  "menus and the Depth Check, whose fingertip touches want the steadier default tracking.")]
         public bool FastHandsInRounds = true;
-        bool fastHands;
+        bool fastHands, fastHandsUsed;
 
         /// <summary>True while this round has asked for Fast Motion Mode (the system treats it as a hint).</summary>
         public bool FastHands => fastHands;
@@ -501,6 +758,7 @@ namespace Cyclopea
             on &= FastHandsInRounds;
             if (on == fastHands) return;
             fastHands = on;
+            if (on) fastHandsUsed = true;
 #if UNITY_ANDROID && !UNITY_EDITOR
             try
             {

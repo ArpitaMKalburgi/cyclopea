@@ -94,11 +94,15 @@ namespace Cyclopea.EditorTools
         {
             var sb = new StringBuilder();
             SetImmersiveDebugger(false, sb);
-            try { Build("Builds/Cyclopea-judge.apk", BuildOptions.None, "Tools/build-judge-report.txt"); }
+            bool ok = false;
+            // Exit only after the debugger is switched back on: a failed judge build must not leave the
+            // project's own setting off (Nov 10: an interrupted Gradle run did exactly that).
+            try { ok = Build("Builds/Cyclopea-judge.apk", BuildOptions.None, "Tools/build-judge-report.txt", exitOnFailure: false); }
             finally { SetImmersiveDebugger(true, sb); AssetDatabase.SaveAssets(); }
+            if (!ok && Application.isBatchMode) EditorApplication.Exit(1);
         }
 
-        static void Build(string path, BuildOptions opts, string reportPath)
+        static bool Build(string path, BuildOptions opts, string reportPath, bool exitOnFailure = true)
         {
             Directory.CreateDirectory("Builds");
             AssetDatabase.SaveAssets();
@@ -115,7 +119,9 @@ namespace Cyclopea.EditorTools
                          $"{(File.Exists(path) ? new FileInfo(path).Length : 0) / (1024 * 1024)} MB, {r.summary.totalErrors} errors, {r.summary.totalTime}";
             Debug.Log(msg);
             File.WriteAllText(reportPath, msg + "\n");
-            if (Application.isBatchMode && r.summary.result != BuildResult.Succeeded) EditorApplication.Exit(1);
+            bool ok = r.summary.result == BuildResult.Succeeded;
+            if (exitOnFailure && Application.isBatchMode && !ok) EditorApplication.Exit(1);
+            return ok;
         }
 
         // ---------- URP ----------
@@ -708,6 +714,9 @@ namespace Cyclopea.EditorTools
             whack.Creatures = creatures; whack.Sounds = sounds; whack.Audio = session.Audio;
             session.Arcade = whack;
             slap.Arcade = whack;
+            // Observability: every round, its frame times and any error, in a per-launch log on the headset.
+            var playLog = game.AddComponent<PlayLog>();
+            playLog.Session = session; playLog.Arcade = whack; playLog.Surface = finder;
 
             // Reverb shaped like the player's own scanned room.
             var roomGo = new GameObject("RoomAcoustics (Meta XR Audio + MRUK)");

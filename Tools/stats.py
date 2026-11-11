@@ -25,7 +25,8 @@ import sys
 from collections import defaultdict
 
 
-def load(paths):
+def load(paths, extra=None):
+    """Trials and summaries (the Depth Check). Play-log lines (app, round, error) go into `extra` by type."""
     trials, summaries = [], []
     for pattern in paths:
         for p in glob.glob(pattern):
@@ -38,6 +39,12 @@ def load(paths):
                     kind = o.get("type")
                     if kind == "health":
                         continue  # system state lines: read by device_e2e.py, not part of the statistics
+                    if kind in ("app", "round", "error"):
+                        if extra is not None:
+                            extra.setdefault(kind, []).append(o)
+                        continue  # the play log (Critter Whack rounds, frame times, errors): section 5
+                    if kind not in ("trial", "summary"):
+                        continue  # a record type this script doesn't know yet
                     if kind == "trial" and o.get("clean") is False:
                         continue  # a health fault touched it; the game did not count it either
                     if kind == "summary" and o.get("outcome") == "Uncertain":
@@ -77,7 +84,8 @@ def main():
     ap.add_argument("logs", nargs="+")
     ap.add_argument("--norms", help="CSV percentile,arcsec from i-Perception 2015")
     a = ap.parse_args()
-    trials, summaries = load(a.logs)
+    extra = {}
+    trials, summaries = load(a.logs, extra)
     # Motion-parallax sessions measure something else (depth from head movement, one eye is enough);
     # every stereo number below uses stereo sessions only. Logs from before the cue field are stereo.
     motion_summaries = [s for s in summaries if s.get("cue") == "Motion"]
@@ -177,6 +185,80 @@ def main():
                 line += f"; on the right square the fingertip was a median {statistics.median(errs):.0f} mm from the creature's height"
             print(line + ".")
         print()
+
+    rounds_section(extra)
+
+
+def rounds_section(extra):
+    """5. Critter Whack rounds from the play logs, and how the headset ran during them."""
+    rounds = extra.get("round", [])
+    errors = extra.get("error", [])
+    if not rounds and not errors:
+        return
+    print("### 5. Critter Whack rounds and how the headset ran")
+    if rounds:
+        played = [r for r in rounds if r.get("ended") == "clock"]
+        left = len(rounds) - len(played)
+        subjects = sorted({r.get("subject", "?") for r in rounds})
+        print(f"{len(rounds)} rounds ({len(played)} to the end of the clock, {left} left from the menu), "
+              f"{len(subjects)} player number(s).")
+        print()
+        if played:
+            caught = [r["caught"] for r in played]
+            escaped = [r["escaped"] for r in played]
+            whiffs = [r["whiffs"] for r in played]
+            hit = sum(caught) / max(1, sum(caught) + sum(escaped))
+            print("| | median | range |")
+            print("|---|---|---|")
+            for name, vals in (("score", [r["score"] for r in played]), ("caught", caught), ("escaped", escaped),
+                               ("empty slaps", whiffs), ("best streak", [r["best_combo"] for r in played])):
+                print(f"| {name} | {statistics.median(vals):.0f} | {min(vals)}–{max(vals)} |")
+            mm = sorted(r["finest_mm"] for r in played if r.get("finest_mm") is not None)
+            if mm:
+                print(f"| finest catch (mm rise) | {statistics.median(mm):.1f} | {mm[0]:.1f}–{mm[-1]:.1f} |")
+            print()
+            print(f"Caught {hit * 100:.0f} % of the critters that floated (the difficulty aims at about 75 %).")
+            # Learning: each player's first round against their latest.
+            by = defaultdict(list)
+            for r in sorted(played, key=lambda r: r["utc"]):
+                by[r.get("subject", "?")].append(r)
+            grew = [(v[0]["score"], v[-1]["score"]) for v in by.values() if len(v) >= 2]
+            if grew:
+                up = sum(1 for a, b in grew if b > a)
+                print(f"Players with two or more rounds: {len(grew)}; {up} scored higher in their latest round than their first.")
+        inputs = defaultdict(int)
+        for r in rounds:
+            for part in filter(None, (r.get("inputs") or "").split(",")):
+                k, _, n = part.partition(":")
+                inputs[k] += int(n or 0)
+        if inputs:
+            print("Inputs used: " + ", ".join(f"{k} {n}" for k, n in sorted(inputs.items(), key=lambda kv: -kv[1])) + ".")
+        surfaces = defaultdict(int)
+        for r in rounds:
+            surfaces[r.get("surface") or "?"] += 1
+        print("Where the grid lay: " + ", ".join(f"{k} {n}" for k, n in sorted(surfaces.items(), key=lambda kv: -kv[1])) + ".")
+        timed = [r for r in rounds if r.get("frames")]
+        if timed:
+            frames = sum(r["frames"] for r in timed)
+            p99 = sorted(r["ms_p99"] for r in timed)
+            worst = max(timed, key=lambda r: r["ms_p99"])
+            late = sum(r["late_pct"] * r["frames"] for r in timed) / max(1, frames)
+            fps = sorted(r["fps_mean"] for r in timed)
+            print()
+            print(f"Frame times over {frames:,} frames in {len(timed)} rounds: mean frame rate {statistics.median(fps):.1f} fps "
+                  f"(median round; lowest {fps[0]:.1f}), p99 frame time {statistics.median(p99):.1f} ms median, "
+                  f"{worst['ms_p99']:.1f} ms worst, at {worst.get('hz', 0):.0f} Hz; {late:.2f} % of frames late.")
+        dirty = sum(1 for r in rounds if r.get("clean") is False)
+        if dirty:
+            print(f"Rounds touched by a health fault: {dirty}.")
+    total_errors = sum(r.get("errors", 0) for r in rounds)
+    exc = [e for e in errors if e.get("level") == "Exception"]
+    print()
+    print(f"Errors logged by the app: {total_errors} during rounds; {len(errors)} distinct kinds in all "
+          f"({len(exc)} exceptions).")
+    for e in errors[:8]:
+        print(f"- {e.get('level')}: {e.get('message', '')[:120]} ({e.get('where', '')[:80]})")
+    print()
 
 
 if __name__ == "__main__":
