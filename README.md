@@ -1,6 +1,6 @@
 # Cyclopea
 
-Creatures hide in your real room, camouflaged so only two eyes working together can reveal them. Pinch the one you see; the camouflage tightens until the game finds the finest depth your eyes can resolve.
+Critters hide in a static of dots on your real desk, and only two eyes working together can see them rise. Slap the one you see. The main game is Critter Whack, a 60-second arcade round; the Depth Check on the home card is the measured side mode.
 
 Entry for the Meta VR Start Developer Competition 2026, Gaming / New Experience. Concept and research: `../IDEA.md`. Build plan: `../PLAN.md`. First device run: [`DEVICE-DAY.md`](DEVICE-DAY.md).
 
@@ -41,7 +41,7 @@ Assets/Cyclopea/
     FrameStats (frame-time percentiles in a fixed histogram), ErrorTally (errors counted, the first of each kind kept, thread-safe)
   Scripts/Runtime/                     one MonoBehaviour per file (Unity only serialises a class whose name matches its file)
     HomeCard                           the daily Depth Check's home: streak, best, next creature; the four squares are its
-                                       buttons (Play, one-eye mode, Field guide, Options), so every input reaches every option
+                                       buttons (Play, Depth Check, Field guide, Options); on menus, every input reaches every option
     Options                            high contrast, look and hold, less movement; kept between launches
     StereoPatch                        one square of static; keeps disparity constant as the head moves, or (Catch) holds
                                        the creature at a fixed physical height like a real object
@@ -54,11 +54,12 @@ Assets/Cyclopea/
                                        look and hold on every menu and after 25 s without a choice
     IsdkSelector, IsdkPatchEvents      Interaction SDK hand rays + v207 GazeInteractor (look and pinch)
     HeadGaze, EitherHandPinch          head-pose gaze source and pinch selector for the GazeInteractor
-    MicrogestureSelector               thumb-only play (swipe to move, tap to pick)
-    HandRaySelector, HeadDwellSelector, VoiceSelector, KeyboardSelector   backup / accessibility / editor inputs
-    PassthroughMood                    room dims while a creature hides
+    MicrogestureSelector               thumb swipes and taps on menus and in the Depth Check (not in Critter Whack)
+    HandRaySelector, HeadDwellSelector, KeyboardSelector   backup / accessibility / editor inputs
+     VoiceSelector                      a word parser only (tested); no speech reaches it: this build has no Voice SDK and no microphone permission
+    PassthroughMood                    room dims during a Depth Check trial
     RoomAcoustics                      Meta XR Audio reverb room sized from the MRUK scan; the creature's chirp plays from where it floated
-    DeskCamouflage                     round 2 in the desk's colours (Passthrough Camera API, asked for after round 1)
+    DeskCamouflage                     Depth Check in the desk's colours (Passthrough Camera API, asked for after the first Depth Check; not yet verified on a headset)
     ScoreAnchor                        today's score left on the desk (persistent spatial anchor) with a two-week graph + streak
     PlatformServices                   entitlement, achievements, days-in-a-row leaderboard (Platform SDK)
     WhackRound                         Critter Whack: 3×3 tiles, critter kinds, adaptive rise, combos, points that pop up, a streak that
@@ -118,7 +119,7 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Broken two-eye view, in the real scene | both eyes given one picture: 0 rounds counted, "Not sure this time / Couldn't measure: your two eyes got the same picture", never "no depth" (the benchmark's counterfactual without the check: 500 of 500 told "no depth") |
 | Found creatures | the creature comes out exactly where it was seen floating (on the sightline, at the height the disparity showed) and, seen from the eyes, covers the exact outline hidden in the square (checked in UV against the shader's mask), never blocks a pick (no colliders), rides a fingertip, settles in a nest of at most 5; rarity follows the disparity it was found at; field guide persists; tutorial runs end to end with and without a hand |
 | Sort and Catch | Sort shows two creatures and only those two squares are answers; Catch holds a creature at a fixed height, a simulated fingertip held still on it catches it (and it climbs on), held 8 cm too high gets "It floated lower than that."; no hands: Catch is skipped, not failed. Closed forms for where a shift is seen checked against a two-ray intersection |
-| Home card and options | a returning player opens on the home card (streak, "Best 180″ (Nov 2)", "Next: a Rare creature. They hide below 120″."); the squares are Play / one-eye mode / Field guide / Options; high contrast makes the static black and white, frames bolder, text bold, room darker; look and hold becomes the input and the instructions say "Look at it and hold"; less movement skips Catch; all three survive a relaunch |
+| Home card and options | a returning player opens on the home card (streak, "Best 180″ (Nov 2)", "Next: a Rare creature. They hide below 120″."); the squares are Play / Depth Check / Field guide / Options; high contrast makes the static black and white, frames bolder, text bold, room darker; look and hold becomes the input and the instructions say "Look at it and hold"; less movement skips Catch; all three survive a relaunch |
 | Nobody stuck behind a pinch | look and hold is live on the notice, home card, options and score card whatever the input; accepting the notice by looking makes it the input; 25 s without a choice in play turns it on with "Can't pinch? Look at a square and hold your gaze on it." |
 | Decoys | from the second staircase turn, about one Spot trial in six puts a flat fake (an outline either eye sees, zero disparity) in another square while the real creature floats clearly; picking the fake says so and leaves the staircase untouched; logged as decoy trials; the card says "Fakes ignored: n of m" |
 | Growth between sessions | each day's best is kept; a finer score than ever says "New personal best!"; the card left on the desk draws the last 14 days (finer is higher); the home card shows the new best |
