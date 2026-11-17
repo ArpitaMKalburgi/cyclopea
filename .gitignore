@@ -131,3 +131,9 @@ __pycache__/
 /Tools/apk-run.txt
 /Tools/run.txt
 /Tools/setup-run.txt
+
+# Release signing key: never commit; back it up
+/Keys/
+*.keystore
+*.jks
+/Builds/Cyclopea-release.apk
