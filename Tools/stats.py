@@ -39,7 +39,7 @@ def load(paths, extra=None):
                     kind = o.get("type")
                     if kind == "health":
                         continue  # system state lines: read by device_e2e.py, not part of the statistics
-                    if kind in ("app", "round", "error"):
+                    if kind in ("app", "round", "error", "step"):
                         if extra is not None:
                             extra.setdefault(kind, []).append(o)
                         continue  # the play log (Critter Whack rounds, frame times, errors): section 5
@@ -187,6 +187,7 @@ def main():
         print()
 
     rounds_section(extra)
+    first_session_section(extra)
 
 
 def rounds_section(extra):
@@ -258,6 +259,40 @@ def rounds_section(extra):
           f"({len(exc)} exceptions).")
     for e in errors[:8]:
         print(f"- {e.get('level')}: {e.get('message', '')[:120]} ({e.get('where', '')[:80]})")
+    print()
+
+
+def first_session_section(extra):
+    """6. The first minutes: seconds from launch to each step, per launch (play-log "step" lines)."""
+    steps = extra.get("step", [])
+    if not steps:
+        return
+    by = defaultdict(dict)
+    for s in steps:
+        by[s.get("session", "?")][s.get("step", "?")] = s
+    first = [v for v in by.values() if v.get("launch", {}).get("detail") == "first"]
+    print("### 6. The first minutes")
+    print(f"{len(by)} launches with steps logged, {len(first)} of them first launches. "
+          "Seconds are from the app starting, so they include reading the first screen.")
+    print()
+    print("| Step | Launches that reached it | Median seconds from launch | Slowest |")
+    print("|---|---|---|---|")
+    for name in ("started", "tutorial_found", "round_started", "first_catch", "round_done", "motion_offered"):
+        ts = sorted(v[name]["t"] for v in by.values() if name in v)
+        if ts:
+            print(f"| {name} | {len(ts)} of {len(by)} | {statistics.median(ts):.0f} | {ts[-1]:.0f} |")
+        else:
+            print(f"| {name} | 0 of {len(by)} | - | - |")
+    how = defaultdict(int)
+    for v in by.values():
+        if "first_catch" in v:
+            how[v["first_catch"].get("detail") or "?"] += 1
+    if how:
+        print()
+        print("First catch made by: " + ", ".join(f"{k} {n}" for k, n in sorted(how.items(), key=lambda kv: -kv[1])) + ".")
+    stuck = sum(1 for v in by.values() if "started" in v and "first_catch" not in v)
+    if stuck:
+        print(f"Launches that started but never caught a critter: {stuck}.")
     print()
 
 

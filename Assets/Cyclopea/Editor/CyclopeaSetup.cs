@@ -93,6 +93,10 @@ namespace Cyclopea.EditorTools
         public static void BuildJudgeApk()
         {
             var sb = new StringBuilder();
+            // The app icon (Tools/make_icon.py): a one-eyed critter made of the static's own dots.
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(Root + "/Art/icon.png");
+            if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+            sb.AppendLine("Icon: " + (icon != null ? "set" : "missing"));
             SetImmersiveDebugger(false, sb);
             bool ok = false;
             // Exit only after the debugger is switched back on: a failed judge build must not leave the
@@ -512,6 +516,8 @@ namespace Cyclopea.EditorTools
                 var comp = mruk.GetComponent<Meta.XR.MRUtilityKit.MRUK>();
                 var kso = new SerializedObject(comp);
                 SetEnum(kso, "SceneSettings.DataSource", "Device");
+                // SurfaceFinder loads the scan itself, without asking the system to run Space Setup when there is none.
+                SetBool(kso, "SceneSettings.LoadSceneOnStartup", false);
                 kso.ApplyModifiedPropertiesWithoutUndo();
             }
 

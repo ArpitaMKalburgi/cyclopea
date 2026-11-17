@@ -116,7 +116,7 @@ namespace Cyclopea.PlayTests
         }
 
         [UnityTest]
-        public IEnumerator AcceptingTheNoticeByLookingMakesLookAndHoldTheInput()
+        public IEnumerator AcceptingTheNoticeByLookingKeepsThePinch()
         {
             var s = Object.FindFirstObjectByType<SpotSession>();
             yield return null;
@@ -125,10 +125,15 @@ namespace Cyclopea.PlayTests
             StringAssert.Contains("look at one and hold", s.Status.text);
             s.Choose(1, "head-dwell");
             Assert.True(s.ShowingTutorial);
-            Assert.True(Options.LookAndHold, "chosen by looking: the game will use looking");
+            Assert.False(Options.LookAndHold, "a look on the first screen only starts the game: it never switches pinch off");
             yield return null;
-            Assert.That(DevControls.Mode, Is.EqualTo(DevControls.InputMode.Dwell));
-            Assert.True(dev.Dwell.enabled);
+            Assert.That(DevControls.Mode, Is.Not.EqualTo(DevControls.InputMode.Dwell), "pinch and slap stay live");
+            // B2: after a system dialog, the instruction that was showing comes back.
+            string before = s.Status.text;
+            s.SetPaused(1, true);
+            Assert.That(s.Status.text, Is.EqualTo("Paused"));
+            s.SetPaused(1, false);
+            Assert.That(s.Status.text, Is.EqualTo(before), "the instruction returns after a pause");
             Options.Reset();
         }
 

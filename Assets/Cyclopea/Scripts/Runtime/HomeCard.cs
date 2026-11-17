@@ -181,7 +181,7 @@ namespace Cyclopea
         static string Said(int option) =>
             option == 0 ? (Options.HighContrast ? "High contrast: black and white static, darker room." : "Standard contrast.")
           : option == 1 ? (Options.LookAndHold ? "Look at a square and hold your gaze to choose it." : "Pinch to choose. Look and hold still works in menus.")
-          : Options.LessMovement ? "Less movement: no reaching, and one-eye mode sways for you." : "Less movement off.";
+          : Options.LessMovement ? "Less movement: no reaching, critters wait longer, one-eye mode sways for you." : "Less movement off.";
 
         int Kinds() => Session.Creatures != null ? Session.Creatures.Collection.KindsFound : 0;
 

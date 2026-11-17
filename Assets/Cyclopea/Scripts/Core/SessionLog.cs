@@ -201,6 +201,17 @@ namespace Cyclopea.Core
             "}");
 
         /// <summary>A health change during the session (part, level, detail), so a log shows what the system was doing.</summary>
+        /// <summary>A step of the session reached for the first time this launch, with the seconds since launch.</summary>
+        public void AddStep(string sessionId, DateTime utc, string step, double seconds, string detail) => lines.Add(
+            "{" +
+            S("type", "step") + "," +
+            S("session", sessionId) + "," +
+            S("utc", utc.ToString("o", CultureInfo.InvariantCulture)) + "," +
+            S("step", step) + "," +
+            N("t", Math.Round(seconds, 1)) + "," +
+            S("detail", detail) +
+            "}");
+
         public void AddHealth(string sessionId, DateTime utc, string part, string level, string detail) => lines.Add(
             "{" +
             S("type", "health") + "," +

@@ -9,6 +9,18 @@ namespace Cyclopea.Tests
     public class ObservabilityTests
     {
         [Test]
+        public void AStepLineCarriesTheSecondsSinceLaunch()
+        {
+            var log = new SessionLog();
+            log.AddStep("s1", new DateTime(2026, 11, 17, 12, 0, 0, DateTimeKind.Utc), "first_catch", 41.26, "slap");
+            string line = log.Lines[0];
+            StringAssert.Contains("\"type\":\"step\"", line);
+            StringAssert.Contains("\"step\":\"first_catch\"", line);
+            StringAssert.Contains("\"t\":41.3", line);
+            StringAssert.Contains("\"detail\":\"slap\"", line);
+        }
+
+        [Test]
         public void FramePercentilesMatchAKnownMix()
         {
             var f = new FrameStats();

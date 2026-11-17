@@ -36,11 +36,45 @@ namespace Cyclopea
         /// <summary>Every line written this launch (tests; bounded by the number of rounds and error kinds).</summary>
         public readonly List<string> Written = new List<string>();
 
+        [Tooltip("Storage stays bounded on a headset played for months: older logs go, and only this many files stay.")]
+        public int KeepDays = 30, KeepFiles = 300;
+
         void OnEnable()
         {
             Application.logMessageReceivedThreaded += OnLog;
             if (Arcade != null) Arcade.Recorded += OnRound;
             Health.Changed += OnHealth;
+            Milestones.Reset();
+            Milestones.Marked += OnStep;
+        }
+
+        void Start() => Milestones.Mark("launch", PlayerPrefs.GetInt(SpotSession.NoticeKey, 0) == 1 ? "returning" : "first");
+
+        void OnStep(string step, string detail)
+        {
+            Open();
+            log.AddStep(launchId, DateTime.UtcNow, step, Time.realtimeSinceStartup, detail);
+            Flush();
+        }
+
+        /// <summary>Deletes session logs older than <see cref="KeepDays"/> and all but the newest <see cref="KeepFiles"/>.</summary>
+        public static int Prune(string dir, int keepDays, int keepFiles, DateTime nowUtc)
+        {
+            int removed = 0;
+            try
+            {
+                var files = new List<FileInfo>(new DirectoryInfo(dir).GetFiles("*.jsonl"));
+                files.Sort((a, b) => b.LastWriteTimeUtc.CompareTo(a.LastWriteTimeUtc));
+                for (int i = 0; i < files.Count; i++)
+                {
+                    bool old = keepDays > 0 && (nowUtc - files[i].LastWriteTimeUtc).TotalDays > keepDays;
+                    if (!old && (keepFiles <= 0 || i < keepFiles)) continue;
+                    files[i].Delete();
+                    removed++;
+                }
+            }
+            catch (Exception e) { Debug.LogWarning("[Cyclopea] play log prune: " + e.Message); }
+            return removed;
         }
 
         void OnDisable()
@@ -48,6 +82,7 @@ namespace Cyclopea
             Application.logMessageReceivedThreaded -= OnLog;
             if (Arcade != null) Arcade.Recorded -= OnRound;
             Health.Changed -= OnHealth;
+            Milestones.Marked -= OnStep;
             DrainErrors();
             Flush();
         }
@@ -135,6 +170,8 @@ namespace Cyclopea
             {
                 string dir = System.IO.Path.Combine(Application.persistentDataPath, "sessions");
                 Directory.CreateDirectory(dir);
+                int removed = Prune(dir, KeepDays, KeepFiles, DateTime.UtcNow);
+                if (removed > 0) Debug.Log("[Cyclopea] play log: removed " + removed + " old session files");
                 path = System.IO.Path.Combine(dir, launchId + ".jsonl");
             }
             catch (Exception e) { Debug.LogWarning("[Cyclopea] play log: " + e.Message); path = null; }

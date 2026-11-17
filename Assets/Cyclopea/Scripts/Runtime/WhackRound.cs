@@ -68,6 +68,20 @@ namespace Cyclopea
 
         public const string BestKey = "cyc_whack_best", TotalKey = "cyc_whack_total", LevelKey = "cyc_whack_level";
         public const int HopperAt = 15, ShyAt = 40, GoldenAt = 80;
+        /// <summary>Levels never run out: after the last new kind, a new level every this many caught.</summary>
+        public const int LevelEvery = 60;
+
+        /// <summary>1 at the start, 2 with hoppers, 3 with shy critters, 4 with goldens, then one more every 60 caught.</summary>
+        public static int Level(int total) =>
+            total < HopperAt ? 1 : total < ShyAt ? 2 : total < GoldenAt ? 3 : 4 + (total - GoldenAt) / LevelEvery;
+
+        /// <summary>The total caught at which the next level starts.</summary>
+        public static int NextLevelAt(int total) =>
+            total < HopperAt ? HopperAt : total < ShyAt ? ShyAt : total < GoldenAt ? GoldenAt
+            : GoldenAt + ((total - GoldenAt) / LevelEvery + 1) * LevelEvery;
+
+        /// <summary>How much faster the round runs: 1 up to level 4, then 6 % more per level, never beyond 1.6.</summary>
+        public static float Pace(int level) => Mathf.Min(1.6f, 1f + 0.06f * Mathf.Max(0, level - 4));
 
         public struct Result
         {
@@ -372,7 +386,10 @@ namespace Cyclopea
             // New players get slower critters and fewer at once: finding the one that floats takes a few
             // rounds to learn (first playtest, Nov 10: 11 caught, 34 escaped). The ease fades by 40 caught.
             float ease = Beginner;
+            int level = Level(TotalCaught + Caught);
+            float pace = Pace(level);
             int maxUp = progress < 0.3f ? 1 : progress < 0.7f ? 2 : 3;
+            if (level >= 6 && progress >= 0.7f) maxUp = 4;
             if (ease > 0.5f) maxUp = Mathf.Min(maxUp, 2);
             if (mayRedraw && now >= nextSpawn && moles.Count < maxUp)
             {
@@ -382,14 +399,16 @@ namespace Cyclopea
                     bool preview = !previewDone && previewAt >= 0f && playSeconds >= previewAt;
                     var m = new Mole { Tile = tile, Kind = preview ? Kind.Golden : PickKind(now - startedAt), Start = now, Preview = preview };
                     if (preview) previewDone = true;
-                    double level = stair.CurrentArcsec;
+                    double depth = stair.CurrentArcsec;
                     // A preview golden floats at the player's own level: a surprise, not a test they can't pass yet.
-                    m.Arcsec = m.Kind == Kind.Shy ? Math.Max(FloorArcsec, level * 0.6)
-                             : m.Kind == Kind.Golden && !m.Preview ? Math.Max(FloorArcsec, level * 0.5)
-                             : level;
+                    m.Arcsec = m.Kind == Kind.Shy ? Math.Max(FloorArcsec, depth * 0.6)
+                             : m.Kind == Kind.Golden && !m.Preview ? Math.Max(FloorArcsec, depth * 0.5)
+                             : depth;
                     float up = Mathf.Lerp(2.6f, 1.6f, progress) + (m.Arcsec < 240 ? 0.6f : 0f) + (m.Kind == Kind.Shy ? 0.5f : 0f);
                     if (m.Kind == Kind.Golden && !m.Preview) up = 1.4f;
                     if (m.Kind == Kind.Trickster) up = 2.2f;
+                    up /= 1f + 0.5f * (pace - 1f);                 // later levels: a little less time each
+                    if (Options.LessMovement) up *= 1.5f;         // less movement: critters wait longer for you
                     up += BeginnerExtraSeconds * ease;
                     m.End = now + up;
                     Reshape(Tiles[tile]);
@@ -398,7 +417,7 @@ namespace Cyclopea
                     // A golden one shimmers as it rises: you hear that one is up, never where (only two eyes find it).
                     if (m.Kind == Kind.Golden && Sounds != null && Audio != null && Sounds.NewKind != null) Audio.PlayOneShot(Sounds.NewKind, 0.6f);
                 }
-                float gap = Mathf.Lerp(1.3f, 0.7f, progress) * (1f + 0.4f * ease) * (0.8f + 0.4f * (float)rng.NextDouble());
+                float gap = Mathf.Lerp(1.3f, 0.7f, progress) * (1f + 0.4f * ease) * (0.8f + 0.4f * (float)rng.NextDouble()) / pace;
                 if (Frenzy) gap *= 0.75f;
                 nextSpawn = now + gap;
             }
@@ -464,6 +483,7 @@ namespace Cyclopea
             }
 
             Caught++;
+            Milestones.Mark("first_catch", method);
             Combo++;
             BestCombo = Math.Max(BestCombo, Combo);
             int pts = m.Kind == Kind.Golden ? 500 : m.Kind == Kind.Shy ? 200 : m.Kind == Kind.Hopper ? 150 : 100;
@@ -709,7 +729,8 @@ namespace Cyclopea
             if (total < HopperAt) return "Hoppers join at " + HopperAt + " caught: " + (HopperAt - total) + " to go";
             if (total < ShyAt) return "Shy critters join at " + ShyAt + " caught: " + (ShyAt - total) + " to go";
             if (total < GoldenAt) return "Golden critters join at " + GoldenAt + " caught: " + (GoldenAt - total) + " to go";
-            return "";
+            int at = NextLevelAt(total);
+            return "Level " + Level(total) + ". Level " + (Level(total) + 1) + " at " + at + " caught: " + (at - total) + " to go";
         }
 
         // ---------- Tiles ----------

@@ -46,13 +46,41 @@ namespace Cyclopea
         /// <summary>True when the player faces something closer than MinDistance in every direction tried; the game asks them to turn.</summary>
         public bool FacingObstacle { get; private set; }
 
+        /// <summary>
+        /// Reads the room scan once the permission is there, and never asks the system to make one: MRUK's own startup
+        /// load opens Quest's Space Setup when the headset has no scan, which throws a seated player out of the game
+        /// before the first square. Without a scan the depth search and the easel take over, as before.
+        /// </summary>
+        System.Collections.IEnumerator LoadRoomQuietly()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            float until = Time.realtimeSinceStartup + 180f;
+            while (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(OVRPermissionsRequester.ScenePermission))
+            {
+                if (Time.realtimeSinceStartup > until) yield break;
+                yield return new WaitForSecondsRealtime(1f);
+            }
+            if (MRUK.Instance != null)
+            {
+                var load = MRUK.Instance.LoadSceneFromDevice(requestSceneCaptureIfNoDataFound: false);
+                while (!load.IsCompleted) yield return null;
+                Debug.Log("[Cyclopea] room scan: " + (load.IsFaulted ? "failed" : load.Result.ToString()));
+            }
+#else
+            yield break;
+#endif
+        }
+
         // Valid before any other Start() reads it; refined once the head is tracked.
         void Awake() => Current = Easel(HeadPos, HeadFwd, null, 0.14f, out _);
 
         void Start()
         {
             if (UseSceneModel && MRUK.Instance != null)
+            {
                 MRUK.Instance.RegisterSceneLoadedCallback(OnSceneLoaded);
+                StartCoroutine(LoadRoomQuietly());
+            }
             // The head pose is not tracked on the first frame, and depth needs a few frames: place
             // again once, then retry the depth path for a few seconds if it wasn't ready.
             Invoke(nameof(Refresh), 1.0f);

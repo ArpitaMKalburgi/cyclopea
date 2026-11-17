@@ -354,6 +354,7 @@ namespace Cyclopea
             if (p.Index == target)
             {
                 tutorialFound = true;
+                Milestones.Mark("tutorial_found");
                 chosen = p.Index;
                 if (Creatures != null) Creatures.Reveal(p, 1920, 1920, true);
                 PlayAtCreature(clipRight, p, 1920);
@@ -398,6 +399,8 @@ namespace Cyclopea
 
         public bool Paused => pauseFlags != 0;
 
+        string statusBeforePause;
+
         public void SetPaused(int reason, bool on)
         {
             bool was = Paused;
@@ -406,10 +409,13 @@ namespace Cyclopea
             if (Paused)
             {
                 pausedAt = Time.time;
-                if (Status != null) Status.text = "Paused";
+                if (Status != null) { statusBeforePause = Status.text; Status.text = "Paused"; }
             }
             else
             {
+                // Back from a system dialog or the headset coming off: the instruction that was showing comes back.
+                if (Status != null && Status.text == "Paused" && statusBeforePause != null) Status.text = statusBeforePause;
+                statusBeforePause = null;
                 float d = Time.time - pausedAt;
                 trialStart += d;
                 stateUntil += d;
@@ -658,6 +664,7 @@ namespace Cyclopea
             state = State.Arcade;
             if (Status != null) { Status.text = ""; toastUntil = 0; }
             if (Creatures != null) Creatures.BeginSession();
+            Milestones.Mark("round_started");
             Arcade.Begin(Surface != null ? Surface.Current : default);
         }
 
@@ -666,8 +673,19 @@ namespace Cyclopea
             state = State.Done;
             lastMeasured = true;
             SetPatchesShown(true);
+            Milestones.Mark("round_done", r.Caught + " caught, " + r.Escaped + " escaped");
             string text = WhackRound.CardText(r);
             string found = Creatures != null ? Creatures.SessionLine() : "";
+            // A full round where critters came and went and almost none were caught: this player may not see depth
+            // from two eyes (about 1 in 14 people). The next round shows the critters through head movement instead,
+            // and the card says so. Before, that path was two menus and a Depth Check away.
+            if (r.Ended == "clock" && r.Caught <= 1 && r.Escaped >= 4 && PreferredCue == SessionLog.Cue.Stereo)
+            {
+                PreferredCue = SessionLog.Cue.Motion;
+                Milestones.Mark("motion_offered");
+                text = "Round over. Nothing rose for you? That's common.\nNext round: sway your head gently and they show.\nOne eye is enough.";
+                found = "";
+            }
             if (found.Length > 0 && text.Split('\n').Length < 6) text += "\n" + found;
             ShowCard(text, arcade: true);
             if (Scores != null) Scores.CountToday();
@@ -1098,10 +1116,12 @@ namespace Cyclopea
             if (state == State.Arcade) { if (Arcade != null) Arcade.Whack(p, method); return; }
             if (state == State.Intro)
             {
-                // Accepted by looking and holding: this player chooses that way, so the game will too.
-                if (method == "head-dwell" && !Options.LookAndHold) { Options.LookAndHold = true; Options.Save(); }
+                // Accepted by looking: that only starts the game. It used to save look and hold as the input, which
+                // switched pinch and slap off for good for anyone who looked at a square while raising a hand.
+                // A player who cannot pinch still gets look and hold from the idle assist, and from Options.
                 PlayerPrefs.SetInt(NoticeKey, 1);
                 PlayerPrefs.Save();
+                Milestones.Mark("started", method);
                 if (PlayerPrefs.GetInt(TutorialKey, 0) != 1) StartTutorial();
                 else Restart();
                 return;
@@ -1518,7 +1538,8 @@ namespace Cyclopea
             {
                 DwellAssist = true;
                 if (dwellSel != null) dwellSel.ResetDwell();
-                Toast("Can't pinch? Look at a square and hold your gaze on it.", 6f);
+                Toast(state == State.Arcade ? "Slap the square where one floats. Or look at it and hold your gaze."
+                                            : "Can't pinch? Look at a square and hold your gaze on it.", 6f);
             }
             if (Title != null)
             {
