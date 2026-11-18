@@ -15,6 +15,7 @@ namespace Cyclopea
         public IsdkPatchEvents[] Patches;
         public bool AllowGaze = true;
 
+        void Awake() { if (GetComponent<HandPointers>() == null) gameObject.AddComponent<HandPointers>(); }
         void OnEnable() { foreach (var p in Patches) if (p != null) p.Selected += OnSelected; }
         void OnDisable() { foreach (var p in Patches) if (p != null) p.Selected -= OnSelected; Hovered = null; }
 

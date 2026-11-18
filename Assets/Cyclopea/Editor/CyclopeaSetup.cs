@@ -177,8 +177,8 @@ namespace Cyclopea.EditorTools
         {
             PlayerSettings.companyName = "Cyclopea";
             PlayerSettings.productName = "Cyclopea";
-            PlayerSettings.bundleVersion = "0.1.1";
-            PlayerSettings.Android.bundleVersionCode = 2;
+            PlayerSettings.bundleVersion = "0.1.5";
+            PlayerSettings.Android.bundleVersionCode = 6;
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, PackageId);
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);

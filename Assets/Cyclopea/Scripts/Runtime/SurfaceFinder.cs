@@ -140,6 +140,47 @@ namespace Cyclopea
             InvokeRepeating(nameof(RetryDepth), 0.5f, 1.0f);
         }
 
+        // ---------- Following the player ----------
+
+        /// <summary>True while a round or a test is running: the squares must not move then. Set by the session.</summary>
+        public System.Func<bool> Busy;
+        [Tooltip("The squares are placed again when they are further than this from the player (metres, along the floor) " +
+                 "for FollowAfter seconds, between rounds only. Before, they stayed where the app was launched: a player " +
+                 "who then sat down somewhere else found them out of reach.")]
+        public float FollowBeyond = 1.0f;
+        public float FollowAfter = 1.5f;
+        /// <summary>How many times the squares came back to the player.</summary>
+        public int Follows { get; private set; }
+        float farSince = -1f, nextFollowCheck;
+
+        /// <summary>Distance along the floor from the player's head to the squares, metres.</summary>
+        public float DistanceToPlayer
+        {
+            get { Vector3 d = Current.Center - HeadPos; d.y = 0; return d.magnitude; }
+        }
+
+        void Update()
+        {
+            if (Time.unscaledTime < nextFollowCheck) return;
+            nextFollowCheck = Time.unscaledTime + 0.25f;
+            bool worn = Application.isEditor || (OVRManager.isHmdPresent && OVRManager.hasInputFocus);
+            if (!worn || Head == null || (Busy != null && Busy()) || DistanceToPlayer <= FollowBeyond)
+            {
+                farSince = -1f;
+                return;
+            }
+            if (farSince < 0f) { farSince = Time.unscaledTime; return; }
+            if (Time.unscaledTime - farSince < FollowAfter) return;
+            farSince = -1f;
+            float was = DistanceToPlayer;
+            if (Source == "depth") Source = "easel";   // let it fall back to in front of the player, not the old desk spot
+            Refresh();
+            SearchAgain();
+            Follows++;
+            Debug.Log("[Cyclopea] squares came back to the player: were " + was.ToString("0.00") + " m away, now " +
+                      DistanceToPlayer.ToString("0.00") + " m (" + Source + ")");
+        }
+
         Vector3 HeadPos => Head != null ? Head.position : new Vector3(0, 1.2f, 0);
         Vector3 HeadFwd => Head != null ? Head.forward : Vector3.forward;
 

@@ -236,6 +236,7 @@ namespace Cyclopea
         {
             foreach (var s in Selectors) if (s != null) s.Selected += OnSelected;
             if (Surface != null) Surface.SurfaceChanged += Place;
+            if (Surface != null) Surface.Busy = () => !(state == State.Intro || state == State.Home || state == State.Done);
             OVRManager.InputFocusLost += OnFocusLost;
             OVRManager.InputFocusAcquired += OnFocusAcquired;
             OVRManager.HMDUnmounted += OnUnmounted;
@@ -438,6 +439,11 @@ namespace Cyclopea
         public enum Activity { None, Tutorial, Arcade, Check }
 
         public bool MenuOpen => menuOpen;
+        /// <summary>
+        /// True where the squares are plain buttons (the first screen, the menu and its pages, a score card): a touch
+        /// chooses them there, like a pinch. Not in a test or the tutorial, where a hand reaches toward a square.
+        /// </summary>
+        public bool SquaresAreButtons => (!Paused || OnlyMenuPaused) && (menuOpen || state == State.Intro || state == State.Home || state == State.Done);
         public Activity MenuFrom { get; private set; }
 
         bool menuOpen;

@@ -28,6 +28,36 @@ namespace Cyclopea
         [Tooltip("A hand that lands on an empty tile waits this long (s) for the rest of it: if its fingertips land on " +
                  "a critter next door, that is the tile it hit. A landing on a critter counts at once.")]
         public float LandingWindowSeconds = 0.08f;
+        [Tooltip("Things on the desk (a laptop, a book) or a desk found a little too low stop the finger before it " +
+                 "reaches the squares. A finger that comes down fast over a square and is stopped under this height (m) " +
+                 "has touched it. Before, such a touch needed several tries.")]
+        public float StoppedBelow = 0.20f;
+        [Tooltip("...after falling at least this far (m)...")]
+        public float StoppedAfterDrop = 0.025f;
+        [Tooltip("...at this speed or faster (m/s) at some point of the fall.")]
+        public float StoppedFromSpeed = 0.25f;
+        [Tooltip("Hand tracking is slower than the display, so some frames repeat the last hand position. A fall " +
+                 "has stopped only when a new position no longer falls, or none has fallen for this long (s).")]
+        public float StopSeconds = 0.05f;
+        /// <summary>Touches that counted because the finger was stopped above the squares.</summary>
+        public int StoppedTouches { get; private set; }
+
+        /// <summary>The session, for the squares that are buttons on cards and menus. Found at run time.</summary>
+        public SpotSession Session;
+        /// <summary>Touches that chose a card or menu square (not a round tile).</summary>
+        public int ButtonTouches { get; private set; }
+        readonly System.Collections.Generic.List<StereoPatch> buttons = new System.Collections.Generic.List<StereoPatch>();
+
+        void Start()
+        {
+            if (Session == null) Session = GetComponent<SpotSession>();
+            if (Session == null) Session = FindFirstObjectByType<SpotSession>(FindObjectsInactive.Include);
+            if (Session == null) return;
+            if (Session.Patches != null) foreach (var p in Session.Patches) if (p != null) buttons.Add(p);
+            if (Session.MenuButton != null) buttons.Add(Session.MenuButton);
+        }
+
+        bool ButtonsNow => buttons.Count > 0 && Session != null && Session.SquaresAreButtons;
 
         readonly Vector3[] points = new Vector3[FingerTips.SlapPointCount];
         readonly bool[] valid = new bool[FingerTips.SlapPointCount];
@@ -35,6 +65,12 @@ namespace Cyclopea
         readonly float[] quietUntil = new float[3];
         readonly StereoPatch[] pending = new StereoPatch[3];
         readonly float[] pendingUntil = new float[3];
+        readonly float[] lastH = new float[FingerTips.SlapPointCount];
+        readonly float[] lastAt = new float[FingerTips.SlapPointCount];
+        readonly float[] fallFrom = new float[FingerTips.SlapPointCount];
+        readonly float[] fallSpeed = new float[FingerTips.SlapPointCount];
+        readonly bool[] seen = new bool[FingerTips.SlapPointCount];
+        readonly bool[] falling = new bool[FingerTips.SlapPointCount];
 
         void Update()
         {
@@ -42,14 +78,16 @@ namespace Cyclopea
             if (Tips == null || Targets == null) return;
             Tips.SlapPoints(points, valid);
             StereoPatch plane = null;
-            foreach (var t in Targets) if (t != null) { plane = t; break; }
+            if (ButtonsNow) plane = buttons[0];
+            else foreach (var t in Targets) if (t != null) { plane = t; break; }
             if (plane == null) return;
             float now = Time.time;
             for (int i = 0; i < points.Length; i++)
             {
-                if (!valid[i]) { armed[i] = false; continue; }
+                if (!valid[i]) { armed[i] = false; seen[i] = false; falling[i] = false; continue; }
                 // Height above the grid's plane: a hand sliding in along the desk never slaps, only one coming down.
                 float h = Height(points[i], plane);
+                if (Stopped(i, h, now, plane)) continue;
                 if (h > ArmHeight) { armed[i] = true; continue; }
                 var tile = Over(points[i]);
                 if (tile == null) continue;
@@ -73,9 +111,75 @@ namespace Cyclopea
                 if (pending[hand] != null && now >= pendingUntil[hand]) Land(hand, pending[hand]);
         }
 
+        /// <summary>
+        /// True when this point's fall has just been stopped above the squares by something real, over a square:
+        /// that is a touch. A fall that goes on down to the squares is left to the usual rule.
+        /// </summary>
+        bool Stopped(int i, float h, float now, StereoPatch plane)
+        {
+            if (!seen[i]) { seen[i] = true; lastH[i] = h; lastAt[i] = now; falling[i] = false; return false; }
+            // Frames without a new hand position repeat the last height. They are not a stop: the first on-headset
+            // try (Nov 18) cut every fall into pieces that way, and one tap in four counted.
+            float dh = h - lastH[i];
+            if (Mathf.Abs(dh) > 0.0002f)
+            {
+                float v = dh / Mathf.Max(now - lastAt[i], 0.004f);
+                float before = lastH[i];
+                lastH[i] = h;
+                lastAt[i] = now;
+                if (v < -0.15f)
+                {
+                    if (!falling[i]) { falling[i] = true; fallFrom[i] = before; fallSpeed[i] = 0f; }
+                    fallSpeed[i] = Mathf.Max(fallSpeed[i], -v);
+                    return false;
+                }
+                if (!falling[i]) return false;
+            }
+            else if (!falling[i] || now - lastAt[i] < StopSeconds) return false;
+            falling[i] = false;   // the fall ended on this frame
+            // Rounds only. On cards and menus a hand that merely settles above the squares must not choose one:
+            // there a touch has to reach the surface, or the player pinches.
+            if (ButtonsNow) return false;
+            if (h < HitHeight || h > StoppedBelow) return false;
+            if (fallFrom[i] - h < StoppedAfterDrop || fallSpeed[i] < StoppedFromSpeed) return false;
+            int hand = FingerTips.HandOf(i);
+            if (now < quietUntil[hand] || pending[hand] != null) return false;
+            // A finger held up by something on the desk is not over the square it covers: from the player's eyes it
+            // covers a square further away. The first on-headset try (Nov 18) logged four touches in a round and all
+            // four on the wrong square. The square is the one on the line from the eyes through the fingertip.
+            var tile = Over(Seen(points[i], plane));
+            var under = Over(points[i]);
+            if (tile == null) tile = under;
+            else if (Arcade != null && !Arcade.IsRealUp(tile) && under != null && Arcade.IsRealUp(under)) tile = under;
+            if (tile == null) return false;
+            for (int j = 0; j < points.Length; j++) if (FingerTips.HandOf(j) == hand) armed[j] = false;
+            quietUntil[hand] = now + RefractorySeconds;
+            StoppedTouches++;
+            Hovered = tile;
+            if (Arcade == null || Arcade.IsRealUp(tile) || LandingWindowSeconds <= 0) Raise(tile, "slap");
+            else { pending[hand] = tile; pendingUntil[hand] = now + LandingWindowSeconds; }
+            return true;
+        }
+
+        /// <summary>Where the player sees this point on the squares: along the line from the eyes through it.</summary>
+        static Vector3 Seen(Vector3 p, StereoPatch plane)
+        {
+            var cam = Camera.main;
+            if (cam == null || plane == null) return p;
+            Vector3 n = -plane.transform.forward;
+            Vector3 eye = cam.transform.position;
+            Vector3 dir = p - eye;
+            float towards = Vector3.Dot(dir, n);
+            if (towards > -0.0001f) return p;   // not looking down onto the squares
+            float t = Vector3.Dot(plane.transform.position - eye, n) / towards;
+            if (t < 1f || t > 4f) return p;      // the squares are not behind the finger
+            return eye + dir * t;
+        }
+
         void Land(int hand, StereoPatch tile)
         {
             pending[hand] = null;
+            if (buttons.Contains(tile)) ButtonTouches++;
             Raise(tile, "slap");
         }
 
@@ -88,8 +192,11 @@ namespace Cyclopea
         {
             float height = float.PositiveInfinity;
             StereoPatch best = null;
-            foreach (var t in Targets)
+            bool menus = ButtonsNow;
+            int n = Targets.Length + (menus ? buttons.Count : 0);
+            for (int k = 0; k < n; k++)
             {
+                var t = k < Targets.Length ? Targets[k] : buttons[k - Targets.Length];
                 if (t == null) continue;
                 var r = t.GetComponent<Renderer>();
                 if (r == null || !r.enabled) continue;
