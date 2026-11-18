@@ -2,11 +2,11 @@
 
 Critters hide in a static of dots on your real desk, and only two eyes working together can see them rise. Slap the one you see. The main game is Critter Whack, a 60-second arcade round; the Depth Check on the home card is the measured side mode.
 
-Entry for the Meta VR Start Developer Competition 2026, Gaming / New Experience. Concept and research: `../IDEA.md`. Build plan: `../PLAN.md`. First device run: [`DEVICE-DAY.md`](DEVICE-DAY.md).
+Entry for the Meta VR Start Developer Competition 2026, Gaming / New Experience. First device run: [`DEVICE-DAY.md`](DEVICE-DAY.md).
 
 ## Build
 
-Unity 6000.0.85f1 (6.0 LTS) with Android Build Support. Packages resolve from Unity's registry and Meta's (`npm.developer.oculus.com`): Meta XR Core, Interaction SDK, MR Utility Kit and Platform 207, URP 17, OpenXR 1.18 (1.17+ is needed for Meta XR Operator), XR Hands, Meta XR Audio 85 (spatializer). How every Meta tool named in the competition rules is used: [`../TOOLS.md`](../TOOLS.md).
+Unity 6000.0.85f1 (6.0 LTS) with Android Build Support. Packages resolve from Unity's registry and Meta's (`npm.developer.oculus.com`): Meta XR Core, Interaction SDK, MR Utility Kit and Platform 207, URP 17, OpenXR 1.18 (1.17+ is needed for Meta XR Operator), XR Hands, Meta XR Audio 85 (spatializer).
 
 Everything is scriptable headless:
 
