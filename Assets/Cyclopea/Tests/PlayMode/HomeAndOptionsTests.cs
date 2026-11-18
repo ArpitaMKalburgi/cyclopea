@@ -125,7 +125,7 @@ namespace Cyclopea.PlayTests
             var dev = Object.FindFirstObjectByType<DevControls>();
             s.Choose(3, "test");
             Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.Options));
-            Assert.That(s.Home.Labels.Select(l => l.text), Is.EqualTo(new[] { "Contrast\nStandard", "Choose by\nPinch", "Less\nmovement\nOff", "Back" }));
+            Assert.That(s.Home.Labels.Select(l => l.text), Is.EqualTo(new[] { "Contrast\nStandard", "Choose by\nPinch", "More\noptions", "Back" }));
 
             s.Choose(0, "test");
             Assert.True(Options.HighContrast);
@@ -147,7 +147,11 @@ namespace Cyclopea.PlayTests
             Assert.True(dev.Dwell.enabled);
 
             s.Choose(2, "test");
+            Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.More), "the second page of options");
+            s.Choose(0, "test");
             Assert.True(Options.LessMovement);
+            s.Choose(3, "test");
+            Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.Options), "its Back returns to the first page");
             Assert.True(StereoPatch.SwayAssist, "motion mode sways for you");
             StringAssert.Contains("hc=1;look=1;less=1", PlayerPrefs.GetString(Options.Key), "kept for next launch");
 
@@ -363,6 +367,123 @@ namespace Cyclopea.PlayTests
                 Assert.That(ldmm, Is.GreaterThanOrEqualTo(minDmm - 0.1f), "label " + i + " type");
             }
             Debug.Log("[Cyclopea test] widest text from gaze centre: " + report);
+        }
+
+        [UnityTest]
+        public IEnumerator LargeTextMakesTheWordsBiggerAndLabelsStillFit()
+        {
+            var s = Session();
+            s.SetTitle("Short words");
+            yield return null;
+            yield return null;
+            float before = TypeDmm(s, s.Title);
+
+            s.Home.Show(HomeCard.Page.Options);
+            s.Choose(2, "test");
+            Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.More));
+            Assert.That(s.Home.Labels.Select(l => l.text),
+                Is.EqualTo(new[] { "Less\nmovement\nOff", "Text size\nStandard", "Sound\nNormal", "Back" }));
+            StringAssert.StartsWith("More options", s.Title.text);
+            s.Choose(1, "test");
+            Assert.True(Options.BigText);
+            Assert.That(s.Home.Labels[1].text, Is.EqualTo("Text size\nLarge"));
+            Assert.That(LegibleText.Scale, Is.EqualTo(Options.BigTextScale));
+            StringAssert.Contains("big=1", PlayerPrefs.GetString(Options.Key), "kept for next launch");
+
+            yield return null;
+            yield return null;
+            var report = new System.Text.StringBuilder();
+            for (int i = 0; i < 4; i++)
+            {
+                var lb = s.Home.Labels[i].GetComponent<Renderer>().bounds;
+                var pb = s.Patches[i].GetComponent<Renderer>().bounds;
+                float ldmm = TypeDmm(s, s.Home.Labels[i]);
+                report.Append("label").Append(i).Append(' ').Append((lb.size.x * 100).ToString("0.0")).Append(" cm ")
+                      .Append(ldmm.ToString("0")).Append(" dmm  ");
+                Assert.That(lb.size.x, Is.LessThanOrEqualTo(pb.size.x * 1.02f), "large label " + i + " still fits its square");
+                Assert.That(ldmm, Is.GreaterThanOrEqualTo(13.9f), "large label " + i + " type");
+            }
+
+            s.SetTitle("Short words");
+            yield return null;
+            yield return null;
+            float after = TypeDmm(s, s.Title);
+            report.Append("title ").Append(before.ToString("0.0")).Append(" -> ").Append(after.ToString("0.0")).Append(" dmm  ");
+            Assert.That(after, Is.GreaterThan(before * 1.25f), "the same words are a quarter bigger or more");
+
+            s.Home.Show(HomeCard.Page.Home);
+            yield return null;
+            yield return null;
+            var r = s.Title.GetComponent<Renderer>();
+            float deg = WidestDeg(s, r);
+            report.Append("home card ").Append(deg.ToString("0.0")).Append("° ");
+            Debug.Log("[Cyclopea test] large text: " + report);
+            Assert.That(deg, Is.LessThanOrEqualTo(40f), "the large home card is still well inside a Quest's view");
+            Assert.That(r.bounds.min.y, Is.GreaterThan(s.Patches[0].transform.position.y - 0.005f), "large text never sinks into the desk");
+
+            // Next launch reads it back; defaults put it back.
+            Options.BigText = false;
+            LegibleText.Scale = 1f;
+            Options.Load();
+            Assert.True(Options.BigText);
+            Assert.That(LegibleText.Scale, Is.EqualTo(Options.BigTextScale));
+            Options.Reset();
+            Assert.That(LegibleText.Scale, Is.EqualTo(1f));
+        }
+
+        [UnityTest]
+        public IEnumerator SoundGoesQuietThenOffThenBackAndIsKept()
+        {
+            var s = Session();
+            s.Home.Show(HomeCard.Page.Options);
+            s.Choose(2, "test");
+            Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.More));
+            Assert.That(AudioListener.volume, Is.EqualTo(1f).Within(0.001f));
+
+            s.Choose(2, "test");
+            Assert.That(Options.Sound, Is.EqualTo(Options.SoundQuiet));
+            Assert.That(AudioListener.volume, Is.EqualTo(0.4f).Within(0.001f));
+            Assert.That(s.Home.Labels[2].text, Is.EqualTo("Sound\nQuiet"));
+
+            s.Choose(2, "test");
+            Assert.That(Options.Sound, Is.EqualTo(Options.SoundOff));
+            Assert.That(AudioListener.volume, Is.EqualTo(0f).Within(0.001f));
+            Assert.That(s.Home.Labels[2].text, Is.EqualTo("Sound\nOff"));
+            StringAssert.Contains("snd=2", PlayerPrefs.GetString(Options.Key), "kept for next launch");
+
+            // Next launch reads it back.
+            Options.Sound = Options.SoundNormal;
+            Options.Load();
+            Assert.That(Options.Sound, Is.EqualTo(Options.SoundOff));
+            Assert.That(AudioListener.volume, Is.EqualTo(0f).Within(0.001f));
+
+            s.Choose(2, "test");
+            Assert.That(Options.Sound, Is.EqualTo(Options.SoundNormal));
+            Assert.That(AudioListener.volume, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(s.Home.Labels[2].text, Is.EqualTo("Sound\nNormal"));
+            yield return null;
+
+            s.Choose(3, "test");
+            Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.Options), "Back goes to the first options page");
+            s.Choose(3, "test");
+            Assert.That(s.Home.Current, Is.EqualTo(HomeCard.Page.Home), "and Back again goes home");
+        }
+
+        [UnityTest]
+        public IEnumerator AControllerTickIsShortAndAlwaysEnds()
+        {
+            var pads = Object.FindFirstObjectByType<ControllerSelector>(FindObjectsInactive.Include);
+            Assert.NotNull(pads, "controller input wired");
+            pads.enabled = true;
+            pads.Tick(false);
+            Assert.True(pads.Buzzing);
+            yield return new WaitForSecondsRealtime(0.3f);
+            Assert.False(pads.Buzzing, "the tick stops by itself");
+            pads.enabled = true;
+            pads.Tick(true);
+            pads.enabled = false;
+            Assert.False(pads.Buzzing, "and never outlives the component");
+            pads.enabled = true;
         }
     }
 }

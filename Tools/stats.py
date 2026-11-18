@@ -11,7 +11,7 @@ Outputs a markdown table with:
      fake in another square) are reported on their own: two eyes take the real creature,
      one eye is drawn to the fake.
   3. Optional population comparison: percentile of each subject's threshold against a
-     norms CSV (columns: percentile, arcsec) transcribed from i-Perception 2015 (CC BY).
+     norms CSV (columns: percentile, arcsec) transcribed from i-Perception 2015, doi:10.1177/2041669515593028 (CC BY).
 
 Only reads the files you pass it; no network.
 """
@@ -39,7 +39,7 @@ def load(paths, extra=None):
                     kind = o.get("type")
                     if kind == "health":
                         continue  # system state lines: read by device_e2e.py, not part of the statistics
-                    if kind in ("app", "round", "error", "step"):
+                    if kind in ("app", "round", "error", "step", "beat"):
                         if extra is not None:
                             extra.setdefault(kind, []).append(o)
                         continue  # the play log (Critter Whack rounds, frame times, errors): section 5
@@ -161,7 +161,7 @@ def main():
             for row in csv.DictReader(f):
                 norms.append((float(row["percentile"]), float(row["arcsec"])))
         norms.sort()
-        print("### 3. Against the i-Perception 2015 population distribution")
+        print("### 3. Against the published population distribution (i-Perception 2015)")
         print("| Subject | Depth Score (″) | Population percentile |\n|---|---|---|")
         for subj, logs in per_subject.items():
             t = 10 ** logs[-1]
@@ -188,6 +188,7 @@ def main():
 
     rounds_section(extra)
     first_session_section(extra)
+    heartbeat_section(extra)
 
 
 def rounds_section(extra):
@@ -293,6 +294,30 @@ def first_session_section(extra):
     stuck = sum(1 for v in by.values() if "started" in v and "first_catch" not in v)
     if stuck:
         print(f"Launches that started but never caught a critter: {stuck}.")
+    print()
+
+
+def heartbeat_section(extra):
+    """7. Heartbeats (every 10 s): frame rate, heat, battery, memory and input across the whole session."""
+    beats = extra.get("beat", [])
+    if not beats:
+        return
+    print("### 7. Heartbeats")
+    fps = sorted(b.get("fps", 0) for b in beats if b.get("focus") and b.get("mounted"))
+    mem = max(b.get("mem_mb", 0) for b in beats)
+    heat = max(b.get("thermal", -1) for b in beats)
+    sessions = len({b.get("session") for b in beats})
+    print(f"{len(beats)} heartbeats over {sessions} launch(es), about {len(beats) * 10 / 60:.0f} minutes.")
+    if fps:
+        print(f"Frame rate while worn and in focus: median {statistics.median(fps):.0f}, lowest {fps[0]:.0f}.")
+    print(f"Memory peak {mem} MB; hottest thermal status {heat} (0 none, 6 shutdown; -1 not readable).")
+    by_state = defaultdict(int)
+    for b in beats:
+        by_state[b.get("state", "?")] += 1
+    print("Time by state (beats): " + ", ".join(f"{k} {n}" for k, n in sorted(by_state.items(), key=lambda kv: -kv[1])) + ".")
+    pads = sum(1 for b in beats if b.get("pads"))
+    hands = sum(1 for b in beats if b.get("hands", "--") != "--")
+    print(f"Hands tracked in {hands} beats, controllers in use in {pads}.")
     print()
 
 

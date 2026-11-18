@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PKG = "com.ujwal240.cyclopea"
+PKG = "com.cyclopea.game"
 ADB = os.environ.get("ADB", r"C:\Unity\Editors\6000.0.85f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe")
 METAVR = shutil.which("metavr") or "metavr"
 # Git Bash, not the WSL bash that Windows may find first (it cannot read a Windows path).

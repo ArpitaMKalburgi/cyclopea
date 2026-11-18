@@ -50,6 +50,14 @@ namespace Cyclopea
 
         void Start() => Milestones.Mark("launch", PlayerPrefs.GetInt(SpotSession.NoticeKey, 0) == 1 ? "returning" : "first");
 
+        /// <summary>A heartbeat line (Heartbeat.cs): how the app is doing right now.</summary>
+        public void Beat(string fields)
+        {
+            Open();
+            log.AddBeat(launchId, DateTime.UtcNow, fields);
+            Flush();
+        }
+
         void OnStep(string step, string detail)
         {
             Open();

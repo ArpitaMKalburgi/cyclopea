@@ -36,7 +36,7 @@ namespace Cyclopea.EditorTools
         const string SettingsDir = Root + "/Settings";
         const string MaterialsDir = Root + "/Materials";
         const string ScenePath = Root + "/Scenes/Cyclopea.unity";
-        const string PackageId = "com.ujwal240.cyclopea";
+        const string PackageId = "com.cyclopea.game";
 
         // ---------- entry points ----------
 
@@ -175,10 +175,10 @@ namespace Cyclopea.EditorTools
 
         static void ConfigurePlayer(StringBuilder report)
         {
-            PlayerSettings.companyName = "Ujwal240";
+            PlayerSettings.companyName = "Cyclopea";
             PlayerSettings.productName = "Cyclopea";
-            PlayerSettings.bundleVersion = "0.1.0";
-            PlayerSettings.Android.bundleVersionCode = 1;
+            PlayerSettings.bundleVersion = "0.1.1";
+            PlayerSettings.Android.bundleVersionCode = 2;
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, PackageId);
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
@@ -300,7 +300,7 @@ namespace Cyclopea.EditorTools
 
         // ---------- Platform SDK + Immersive Debugger ----------
 
-        const string AppId = "1408927408970808";   // public App ID (Developer Dashboard), not a secret
+        const string AppId = "1385317811339078";   // public App ID (Developer Dashboard), not a secret
 
         static void ConfigurePlatform(StringBuilder report)
         {
@@ -661,6 +661,7 @@ namespace Cyclopea.EditorTools
             titleLegible.Head = center; titleLegible.TargetDmm = 18f; titleLegible.MaxWidthDeg = 24f;
             var statusLegible = session.Status.gameObject.AddComponent<LegibleText>();
             statusLegible.Head = center; statusLegible.TargetDmm = 16f; statusLegible.MaxWidthDeg = 30f;
+            statusLegible.BigTextShare = 0.5f;   // the line under the grid has the squares just above it
             // Words sit on soft dark panels: readable over any room, and they look like one product.
             session.Title.gameObject.AddComponent<TextPanel>().Material = panelMat;
             session.Status.gameObject.AddComponent<TextPanel>().Material = panelMat;
@@ -723,6 +724,18 @@ namespace Cyclopea.EditorTools
             // Observability: every round, its frame times and any error, in a per-launch log on the headset.
             var playLog = game.AddComponent<PlayLog>();
             playLog.Session = session; playLog.Arcade = whack; playLog.Surface = finder;
+            // Show, don't tell (ported from Worldeck): a see-through hand pinches on the first screen and slaps the
+            // middle tile in a newer player's countdown, before any critter is up.
+            var ghostMat = MakeMaterial(MaterialsDir + "/Ghost.mat", Shader.Find("Cyclopea/Ghost"), m => m.renderQueue = 3010);
+            var coach = game.AddComponent<SlapCoach>();
+            coach.Session = session; coach.Arcade = whack; coach.Tips = tips; coach.Head = center; coach.Material = ghostMat;
+            // Controllers picked up: what each button does, floating over the controllers for a few seconds.
+            var padLabels = game.AddComponent<ControllerLabels>();
+            padLabels.Left = pads.LeftAnchor; padLabels.Right = pads.RightAnchor; padLabels.Head = center; padLabels.Panel = panelMat;
+            // A heartbeat every 10 s into the play log and logcat: state, fps, input, memory, heat, battery.
+            var heartbeat = game.AddComponent<Heartbeat>();
+            heartbeat.Session = session; heartbeat.Arcade = whack; heartbeat.Tips = tips; heartbeat.Surface = finder;
+            heartbeat.Log = playLog; heartbeat.Coach = coach;
 
             // Reverb shaped like the player's own scanned room.
             var roomGo = new GameObject("RoomAcoustics (Meta XR Audio + MRUK)");

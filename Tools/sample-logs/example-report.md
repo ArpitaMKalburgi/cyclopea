@@ -9,7 +9,7 @@
 ### 2. One-eye control (must be at chance)
 40 trials with one eye covered: 15 % correct (95 % CI 7–29 %), chance 25 %. **PASS — no monocular leak**
 
-### 3. Against the i-Perception 2015 population distribution
+### 3. Against the published population distribution (i-Perception 2015)
 | Subject | Depth Score (″) | Population percentile |
 |---|---|---|
 | subj00 | 33 | ~50th |

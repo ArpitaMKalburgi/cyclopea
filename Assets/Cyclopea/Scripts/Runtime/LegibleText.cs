@@ -22,6 +22,11 @@ namespace Cyclopea
         public float FitFraction = 0.9f;
         [Tooltip("If above zero, a long block is narrowed to this many degrees wide (still never below MinDmm).")]
         public float MaxWidthDeg;
+        [Tooltip("How much of the Large text option this text takes: 1 all of it, 0 none (a line with little room).")]
+        [Range(0f, 1f)] public float BigTextShare = 1f;
+
+        /// <summary>The player's text size (Options): 1 standard, 1.3 large. Every LegibleText follows it.</summary>
+        public static float Scale = 1f;
 
         /// <summary>The type size as seen from the head right now, in dmm.</summary>
         public float Dmm { get; private set; }
@@ -47,14 +52,16 @@ namespace Cyclopea
             float scale = Mathf.Max(1e-6f, transform.lossyScale.y);
             // TextMesh type height is about 0.1 × fontSize × characterSize in local units.
             float perDmm = d * 0.001f / (0.1f * tm.fontSize * scale);
-            float size = TargetDmm * perDmm;
+            // Large text: the aim and the width a long block may take grow together; a label still stays in its square.
+            float big = 1f + (Mathf.Max(1f, Scale) - 1f) * Mathf.Clamp01(BigTextShare);
+            float size = TargetDmm * big * perDmm;
 
             float widthPerSize = WidthPerCharacterSize();
             if (widthPerSize > 0f)
             {
                 float maxWidth = float.MaxValue;
                 if (FitInside != null) maxWidth = Mathf.Min(maxWidth, FitInside.lossyScale.x * FitFraction);
-                if (MaxWidthDeg > 0f) maxWidth = Mathf.Min(maxWidth, 2f * d * Mathf.Tan(0.5f * MaxWidthDeg * Mathf.Deg2Rad));
+                if (MaxWidthDeg > 0f) maxWidth = Mathf.Min(maxWidth, 2f * d * Mathf.Tan(0.5f * MaxWidthDeg * big * Mathf.Deg2Rad));
                 if (maxWidth < float.MaxValue) size = Mathf.Min(size, maxWidth / widthPerSize);
             }
             size = Mathf.Max(size, MinDmm * perDmm);

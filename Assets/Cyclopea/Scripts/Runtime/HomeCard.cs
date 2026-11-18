@@ -12,7 +12,8 @@ namespace Cyclopea
     /// shows, so a player who cannot pinch can still reach Options and switch to it for play.
     ///   Home     Play (Critter Whack) | Depth Check | Field guide | Options
     ///   Check    Two eyes | One eye (by moving your head) | – | Back
-    ///   Options  Contrast | Choose by | Less movement | Back
+    ///   Options  Contrast | Choose by | More options | Back
+    ///   More     Less movement | Text size | Sound | Back (to Options)
     ///   Guide    which species and rarities have been found; any square goes back
     ///   Pause    Resume | Home | New round / Start over / Skip to the game | Options   (the Menu button, mid-game)
     ///   Card     Play again / Check again / One-eye mode | Home | Depth Check / Play | Options   (after a round)
@@ -21,7 +22,7 @@ namespace Cyclopea
     /// </summary>
     public sealed class HomeCard : MonoBehaviour
     {
-        public enum Page { Home, Options, FieldGuide, Check, Pause, Card }
+        public enum Page { Home, Options, FieldGuide, Check, Pause, Card, More }
 
         public SpotSession Session;
         public ScoreAnchor Scores;
@@ -120,11 +121,20 @@ namespace Cyclopea
                 case Page.Options:
                     if (index == 0) Options.HighContrast = !Options.HighContrast;
                     else if (index == 1) Options.LookAndHold = !Options.LookAndHold;
-                    else if (index == 2) Options.LessMovement = !Options.LessMovement;
+                    else if (index == 2) { Show(Page.More); break; }
                     else { Show(backTo); break; }
                     Options.Save();
                     Show(Page.Options);
                     Session.Toast(Said(index), 3f);
+                    break;
+                case Page.More:
+                    if (index == 0) Options.LessMovement = !Options.LessMovement;
+                    else if (index == 1) Options.BigText = !Options.BigText;
+                    else if (index == 2) Options.Sound = (Options.Sound + 1) % 3;
+                    else { Show(Page.Options); break; }
+                    Options.Save();
+                    Show(Page.More);
+                    Session.Toast(SaidMore(index), 3f);
                     break;
                 case Page.Pause:
                     if (index == 0) Session.Resume();
@@ -160,7 +170,12 @@ namespace Cyclopea
                 case Page.Options:
                     return i == 0 ? "Contrast\n" + (Options.HighContrast ? "High" : "Standard")
                          : i == 1 ? "Choose by\n" + (Options.LookAndHold ? "Look + hold" : "Pinch")
-                         : i == 2 ? "Less\nmovement\n" + (Options.LessMovement ? "On" : "Off")
+                         : i == 2 ? "More\noptions"
+                         : "Back";
+                case Page.More:
+                    return i == 0 ? "Less\nmovement\n" + (Options.LessMovement ? "On" : "Off")
+                         : i == 1 ? "Text size\n" + (Options.BigText ? "Large" : "Standard")
+                         : i == 2 ? "Sound\n" + Options.SoundName
                          : "Back";
                 case Page.Pause:
                     return i == 0 ? "Resume"
@@ -180,8 +195,13 @@ namespace Cyclopea
 
         static string Said(int option) =>
             option == 0 ? (Options.HighContrast ? "High contrast: black and white static, darker room." : "Standard contrast.")
-          : option == 1 ? (Options.LookAndHold ? "Look at a square and hold your gaze to choose it." : "Pinch to choose. Look and hold still works in menus.")
-          : Options.LessMovement ? "Less movement: no reaching, critters wait longer, one-eye mode sways for you." : "Less movement off.";
+          : (Options.LookAndHold ? "Look at a square and hold your gaze to choose it." : "Pinch to choose. Look and hold still works in menus.");
+
+        static string SaidMore(int option) =>
+            option == 0 ? (Options.LessMovement ? "Less movement: no reaching, critters wait longer, one-eye mode sways for you." : "Less movement off.")
+          : option == 1 ? (Options.BigText ? "Large text: every label and card is bigger." : "Standard text size.")
+          : Options.Sound == Options.SoundOff ? "Sound off."
+          : Options.Sound == Options.SoundQuiet ? "Sound: quiet." : "Sound: normal.";
 
         int Kinds() => Session.Creatures != null ? Session.Creatures.Collection.KindsFound : 0;
 
@@ -192,6 +212,8 @@ namespace Cyclopea
                 case Page.Options:
                     string checks = Health.CheckLine();
                     return "Options\nChoose a square to switch it." + (checks.Length > 0 ? "\n" + checks : "");
+                case Page.More:
+                    return "More options\nChoose a square to switch it.";
                 case Page.FieldGuide:
                     return FieldGuide(Session.Creatures != null ? Session.Creatures.Collection : new CreatureCollection());
                 case Page.Check:

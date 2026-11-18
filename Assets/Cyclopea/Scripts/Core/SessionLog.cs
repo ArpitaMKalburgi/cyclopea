@@ -201,6 +201,15 @@ namespace Cyclopea.Core
             "}");
 
         /// <summary>A health change during the session (part, level, detail), so a log shows what the system was doing.</summary>
+        /// <summary>A heartbeat: <paramref name="fields"/> is already JSON ("k":v pairs, no braces).</summary>
+        public void AddBeat(string sessionId, DateTime utc, string fields) => lines.Add(
+            "{" +
+            S("type", "beat") + "," +
+            S("session", sessionId) + "," +
+            S("utc", utc.ToString("o", CultureInfo.InvariantCulture)) +
+            (string.IsNullOrEmpty(fields) ? "" : "," + fields) +
+            "}");
+
         /// <summary>A step of the session reached for the first time this launch, with the seconds since launch.</summary>
         public void AddStep(string sessionId, DateTime utc, string step, double seconds, string detail) => lines.Add(
             "{" +

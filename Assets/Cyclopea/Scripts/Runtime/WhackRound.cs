@@ -149,6 +149,8 @@ namespace Cyclopea
 
         public bool Running => phase != Phase.Off;
         public bool Playing => phase == Phase.Play;
+        /// <summary>The 3-2-1 before play: no critters up yet (the coach may show the slap).</summary>
+        public bool Counting => phase == Phase.Countdown;
         /// <summary>When the player last chose a tile (or the round started): the session's "can't pinch?" assist reads it.</summary>
         public float LastActionAt { get; private set; }
         public int Score { get; private set; }

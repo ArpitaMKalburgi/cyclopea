@@ -42,7 +42,13 @@ Assets/Cyclopea/
   Scripts/Runtime/                     one MonoBehaviour per file (Unity only serialises a class whose name matches its file)
     HomeCard                           the daily Depth Check's home: streak, best, next creature; the four squares are its
                                        buttons (Play, Depth Check, Field guide, Options); on menus, every input reaches every option
-    Options                            high contrast, look and hold, less movement; kept between launches
+    Options                            high contrast, look and hold, less movement, large text, sound level
+                                       (normal, quiet, off); two pages of four squares; kept between launches
+    SlapCoach, GhostHand               a see-through hand shows the move: a pinch on the first screen, a flat-palm
+                                       slap in a newer player's countdown (never while a critter is up)
+    ControllerSelector, ControllerLabels   trigger rays as a backup input, a short tick when a trigger chooses,
+                                       and what each button does, floating over the controllers for 12 s
+    Heartbeat                          every 10 s: state, fps, input, memory, heat, battery, into the play log
     StereoPatch                        one square of static; keeps disparity constant as the head moves, or (Catch) holds
                                        the creature at a fixed physical height like a real object
     SurfaceFinder                      MRUK table/wall checked against the room -> Depth API PlaceBox -> easel that finds open space
@@ -69,10 +75,10 @@ Assets/Cyclopea/
     TuningPanel                        Immersive Debugger panel (dev builds)
     DevControls                        finger switches + adb file remote (dev builds only)
   Editor/CyclopeaSetup.cs              headless setup (incl. ISDK rig via its wizard, XR Operator, Immersive Debugger), scene, APKs, captures
-  Tests/Editor/                        81 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice,
+  Tests/Editor/                        86 NUnit tests (staircase, ladder, codes, layout, camouflage, streak, microgestures, voice,
                                        creatures, Catch geometry checked by ray tracing, hold-still detector, progress, goals,
                                        frame-time percentiles, error tally under threads and floods, the round record)
-  Tests/PlayMode/                      55 in the real scene: wiring (no missing scripts), simulated sessions through Spot, Sort
+  Tests/PlayMode/                      61 in the real scene: wiring (no missing scripts), simulated sessions through Spot, Sort
                                        and Catch, motion mode, notice, tutorial, creatures, pause/resume, rest break, home card,
                                        options, decoys, personal best and graph, text inside the comfortable view,
                                        placement sweep over every MRUK sample room, Critter Whack, health checks,
@@ -100,8 +106,8 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Per-eye shift, production shader through URP | within 0.008 px rms of commanded, from 47.7 px down to 0.1 px |
 | Eyes identical outside the creature | mean abs difference 0.0000 |
 | One eye alone, privileged observer told the outline | 19.5–29.2 % in 4-choice trials (chance 25 %), 40 images per condition |
-| Unit tests in Unity | 81 / 81 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still, progress across days, goals, frame times, error tally, round record) |
-| Tests in the real scene | 55 / 55 |
+| Unit tests in Unity | 86 / 86 (staircase, ladder, codes, layout, desk palette on 4 desk types, streak, microgesture grid, voice parsing, motion parallax, creatures, Catch geometry, hold-still, progress across days, goals, frame times, error tally, round record) |
+| Tests in the real scene | 61 / 61 |
 | Photosensitivity | critters appearing, hopping and ducking redraw the whole grid at most 3 times a second (shortest gap measured over a round ≥ 0.34 s); a player's own catch still answers at once |
 | Menu inside the narrow field of view | across all 87 rooms and 1,372 seats, the Menu button's widest corner is 25.2° from the gaze centre (design area 27°) |
 | A way back from anywhere | the Menu square beside the grid (also ☰, the left-hand menu pinch, Esc) pauses a round, the Depth Check or the tutorial: the round's clock and critters wait, nothing floats behind the labels, and Resume puts back the same trial or the same time left; Home and start over keep the round's catches but set no best; Options' Back returns to the menu; every score card labels its squares (again, Home, the other game, Options). Taking the headset off or opening the system menu mid-game opens the game's menu, so the player comes back to "Paused" and resumes by choice, with nothing chosen while the headset is off |
@@ -119,11 +125,11 @@ web/index.html                         Stereo Secrets in the Quest Browser (WebX
 | Broken two-eye view, in the real scene | both eyes given one picture: 0 rounds counted, "Not sure this time / Couldn't measure: your two eyes got the same picture", never "no depth" (the benchmark's counterfactual without the check: 500 of 500 told "no depth") |
 | Found creatures | the creature comes out exactly where it was seen floating (on the sightline, at the height the disparity showed) and, seen from the eyes, covers the exact outline hidden in the square (checked in UV against the shader's mask), never blocks a pick (no colliders), rides a fingertip, settles in a nest of at most 5; rarity follows the disparity it was found at; field guide persists; tutorial runs end to end with and without a hand |
 | Sort and Catch | Sort shows two creatures and only those two squares are answers; Catch holds a creature at a fixed height, a simulated fingertip held still on it catches it (and it climbs on), held 8 cm too high gets "It floated lower than that."; no hands: Catch is skipped, not failed. Closed forms for where a shift is seen checked against a two-ray intersection |
-| Home card and options | a returning player opens on the home card (streak, "Best 180″ (Nov 2)", "Next: a Rare creature. They hide below 120″."); the squares are Play / Depth Check / Field guide / Options; high contrast makes the static black and white, frames bolder, text bold, room darker; look and hold becomes the input and the instructions say "Look at it and hold"; less movement skips Catch; all three survive a relaunch |
+| Home card and options | a returning player opens on the home card (streak, "Best 180″ (Nov 2)", "Next: a Rare creature. They hide below 120″."); the squares are Play / Depth Check / Field guide / Options; high contrast makes the static black and white, frames bolder, text bold, room darker; look and hold becomes the input and the instructions say "Look at it and hold"; a second page (More options) has less movement (skips Catch), large text (every label and card 1.3 times bigger, labels still inside their squares) and sound (normal, quiet, off); all five survive a relaunch |
 | Nobody stuck behind a pinch | look and hold is live on the notice, home card, options and score card whatever the input; accepting the notice by looking makes it the input; 25 s without a choice in play turns it on with "Can't pinch? Look at a square and hold your gaze on it." |
 | Decoys | from the second staircase turn, about one Spot trial in six puts a flat fake (an outline either eye sees, zero disparity) in another square while the real creature floats clearly; picking the fake says so and leaves the staircase untouched; logged as decoy trials; the card says "Fakes ignored: n of m" |
 | Growth between sessions | each day's best is kept; a finer score than ever says "New personal best!"; the card left on the desk draws the last 14 days (finer is higher); the home card shows the new best |
-| Text inside the comfortable view | measured on the rendered text, not its anchor: notice, home, options, field guide, round title, the longest score card and the status line all within 24° of the gaze centre (limit 27°; status line 19.8°); menu labels 1.8–3.8 cm wide on 12 cm squares |
+| Text inside the comfortable view | measured on the rendered text, not its anchor: notice, home, options, field guide, round title, the longest score card and the status line all within 27° of the gaze centre (widest: the home card at 26.9°; status line 21.5°; with large text the home card reaches 30°); menu labels 1.8–3.8 cm wide on 12 cm squares |
 | Comfort and policy | first launch shows the notice (no medical-claim words, checked) and starts nothing until a pinch; pause freezes the trial and reaction time; 10 minutes of play leads to a rest break |
 | Motion mode (head-motion parallax, one eye is enough) | see `Tools/motion-report.md`; in the real scene only the target square slides, and a simulated player finishes with a Motion Depth Score |
 | Dev APK | builds clean, 105 MB, arm64, API 32+, Vulkan, OpenXR multiview, XR Operator + Immersive Debugger in |
